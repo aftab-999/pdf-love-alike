@@ -27,9 +27,9 @@ const CompressPDF = () => {
   useEffect(() => {
     if (files.length > 0) {
       const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-      // Calculate estimated size: lower compression percentage means smaller file size
-      const reduction = (100 - compressionPercentage) / 100;
-      const estimated = totalSize * (1 - reduction * 0.9); // Maximum 90% reduction at 0% slider
+      // Updated calculation: higher compression percentage means smaller file size
+      const reduction = compressionPercentage / 100;
+      const estimated = totalSize * (1 - reduction * 0.9); // Maximum 90% reduction at 100% slider
       setEstimatedSize(estimated);
     } else {
       setEstimatedSize(null);
@@ -38,9 +38,9 @@ const CompressPDF = () => {
 
   // Update compression level based on slider percentage
   useEffect(() => {
-    if (compressionPercentage < 30) {
+    if (compressionPercentage > 70) {
       setCompressionLevel("high");
-    } else if (compressionPercentage > 70) {
+    } else if (compressionPercentage < 30) {
       setCompressionLevel("low");
     } else {
       setCompressionLevel("medium");
@@ -155,8 +155,8 @@ const CompressPDF = () => {
                     onValueChange={(value) => setCompressionPercentage(value[0])}
                   />
                   <div className="flex justify-between text-xs text-gray-500">
-                    <span>Maximum Compression</span>
                     <span>Minimum Compression</span>
+                    <span>Maximum Compression</span>
                   </div>
                 </div>
 
