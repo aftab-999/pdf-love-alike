@@ -8,6 +8,8 @@ import Layout from "./components/Layout";
 import HomePage from "./pages/HomePage";
 import ToolsPage from "./pages/ToolsPage";
 import MergePDF from "./pages/MergePDF";
+import SplitPDF from "./pages/SplitPDF";
+import PdfToImage from "./pages/PdfToImage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -23,12 +25,9 @@ const App = () => (
             <Route path="/" element={<HomePage />} />
             <Route path="/tools" element={<ToolsPage />} />
             <Route path="/merge-pdf" element={<MergePDF />} />
-            {/* In a real implementation, we would add routes for all tools */}
-            {/* <Route path="/pdf-to-image" element={<PdfToImage />} /> */}
-            {/* <Route path="/image-to-pdf" element={<ImageToPdf />} /> */}
-            {/* <Route path="/split-pdf" element={<SplitPdf />} /> */}
-            {/* <Route path="/compress-pdf" element={<CompressPdf />} /> */}
-            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="/split-pdf" element={<SplitPDF />} />
+            <Route path="/pdf-to-image" element={<PdfToImage />} />
+            {/* More routes will be added as we implement them */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </Layout>
