@@ -12,28 +12,32 @@ import SplitPDF from "./pages/SplitPDF";
 import PdfToImage from "./pages/PdfToImage";
 import NotFound from "./pages/NotFound";
 
+// Initialize the query client outside of the component
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
+// Make sure App is a proper function component
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        <Layout>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            <Route path="/tools" element={<ToolsPage />} />
-            <Route path="/merge-pdf" element={<MergePDF />} />
-            <Route path="/split-pdf" element={<SplitPDF />} />
-            <Route path="/pdf-to-image" element={<PdfToImage />} />
-            {/* More routes will be added as we implement them */}
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </Layout>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <Layout>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/tools" element={<ToolsPage />} />
+              <Route path="/merge-pdf" element={<MergePDF />} />
+              <Route path="/split-pdf" element={<SplitPDF />} />
+              <Route path="/pdf-to-image" element={<PdfToImage />} />
+              {/* More routes will be added as we implement them */}
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Layout>
+        </TooltipProvider>
       </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+    </QueryClientProvider>
+  );
+}
 
 export default App;
