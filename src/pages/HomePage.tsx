@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { 
-  FileImage, Images, Merge, FileMinus, Compress, 
+  FileImage, Images, Merge, FileMinus, Compass, 
   Lock, File, Edit, Download, FileText, Scissors 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -43,7 +42,7 @@ const HomePage = () => {
     {
       title: 'Compress PDF',
       description: 'Reduce the size of your PDF',
-      icon: Compress,
+      icon: Compass,
       color: 'bg-purple-500',
       path: '/compress-pdf'
     },

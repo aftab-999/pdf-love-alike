@@ -1,7 +1,6 @@
-
 import React from 'react';
 import { 
-  FileImage, Images, Merge, FileMinus, Compress, 
+  FileImage, Images, Merge, FileMinus, Compass, 
   Lock, File, Edit, FileText, Scissors, Crop, RotateCw
 } from 'lucide-react';
 import ToolCard from '@/components/ToolCard';
@@ -42,7 +41,7 @@ const ToolsPage = () => {
     {
       title: 'Compress PDF',
       description: 'Reduce the size of your PDF',
-      icon: Compress,
+      icon: Compass,
       color: 'bg-purple-500',
       path: '/compress-pdf'
     },
