@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -13,7 +14,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 222.2 47.4% 11.2%;
+    --primary: 0 78% 57%; /* Customized to match PDF red */
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -61,8 +62,8 @@
     --popover: 222.2 84% 4.9%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 0 78% 57%; /* Customized to match PDF red */
+    --primary-foreground: 210 40% 98%;
 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -97,5 +98,15 @@
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .tool-card {
+    @apply bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer border border-transparent hover:border-pdf-blue;
+  }
+  
+  .drop-area {
+    @apply border-2 border-dashed border-gray-300 rounded-xl p-8 flex flex-col items-center justify-center transition-all duration-300 hover:border-pdf-blue;
   }
 }
