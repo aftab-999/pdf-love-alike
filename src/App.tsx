@@ -10,6 +10,7 @@ import ToolsPage from "./pages/ToolsPage";
 import MergePDF from "./pages/MergePDF";
 import SplitPDF from "./pages/SplitPDF";
 import PdfToImage from "./pages/PdfToImage";
+import CompressPDF from "./pages/CompressPDF";
 import NotFound from "./pages/NotFound";
 
 // Initialize the query client outside of the component
@@ -30,6 +31,7 @@ function App() {
               <Route path="/merge-pdf" element={<MergePDF />} />
               <Route path="/split-pdf" element={<SplitPDF />} />
               <Route path="/pdf-to-image" element={<PdfToImage />} />
+              <Route path="/compress-pdf" element={<CompressPDF />} />
               {/* More routes will be added as we implement them */}
               <Route path="*" element={<NotFound />} />
             </Routes>
