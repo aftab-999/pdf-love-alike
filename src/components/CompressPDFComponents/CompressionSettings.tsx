@@ -4,7 +4,12 @@ import { Percent } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { formatFileSize } from '@/lib/fileUtils';
+import { 
+  formatFileSize, 
+  getCompressionForExactTargetSize,
+  calculateEstimatedSize
+} from '@/lib/fileUtils';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface CompressionSettingsProps {
   compressionPercentage: number;
@@ -23,18 +28,23 @@ const CompressionSettings: React.FC<CompressionSettingsProps> = ({
   originalSize,
   setTargetSize
 }) => {
-  // Helper to handle preset size selection
+  const isMobile = useIsMobile();
+
+  // Helper to handle preset size selection with exact target size
   const handlePresetSelection = (targetSizeKB: number) => {
     const targetSizeBytes = targetSizeKB * 1024;
     setTargetSize(targetSizeBytes);
     
-    // Calculate compression percentage needed to reach target size
-    // Limit maximum compression to 95% to avoid unrealistic expectations
+    // Calculate precise compression percentage needed to reach target size
     if (originalSize > 0) {
-      const neededPercentage = Math.min(95, Math.max(5, 100 - (targetSizeBytes / originalSize * 100)));
-      setCompressionPercentage(Math.round(neededPercentage));
+      const neededPercentage = getCompressionForExactTargetSize(originalSize, targetSizeKB);
+      setCompressionPercentage(neededPercentage);
     }
   };
+
+  // Calculate current estimated output size
+  const currentEstimatedSize = estimatedSize || 
+    (originalSize > 0 ? calculateEstimatedSize(originalSize, compressionPercentage) : null);
 
   return (
     <div className="flex flex-col space-y-4">
@@ -49,8 +59,8 @@ const CompressionSettings: React.FC<CompressionSettingsProps> = ({
         <Slider 
           id="compression-percentage"
           value={[compressionPercentage]} 
-          min={0} 
-          max={100} 
+          min={5} 
+          max={95} 
           step={1} 
           className="w-full"
           onValueChange={(value) => {
@@ -67,7 +77,7 @@ const CompressionSettings: React.FC<CompressionSettingsProps> = ({
       {/* Preset Target Size Buttons */}
       <div className="space-y-2">
         <Label className="text-sm">Preset Target Sizes</Label>
-        <div className="flex flex-wrap gap-2">
+        <div className={`flex ${isMobile ? 'flex-wrap' : ''} gap-2`}>
           <Button 
             variant="outline" 
             size="sm" 
@@ -114,7 +124,7 @@ const CompressionSettings: React.FC<CompressionSettingsProps> = ({
       </div>
       
       {/* Estimated Size Information */}
-      {estimatedSize !== null && (
+      {currentEstimatedSize !== null && (
         <div className="p-3 bg-blue-50 border border-blue-100 rounded-md">
           <p className="text-sm flex items-center justify-between">
             <span className="font-medium">Original Size:</span>
@@ -122,7 +132,7 @@ const CompressionSettings: React.FC<CompressionSettingsProps> = ({
           </p>
           <p className="text-sm flex items-center justify-between mt-1">
             <span className="font-medium">Estimated Size:</span>
-            <span className="text-blue-700">{formatFileSize(estimatedSize)}</span>
+            <span className="text-blue-700">{formatFileSize(currentEstimatedSize)}</span>
           </p>
           <p className="text-xs text-gray-500 mt-2">
             Note: Actual compressed size may vary based on PDF content

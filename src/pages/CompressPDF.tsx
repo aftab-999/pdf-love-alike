@@ -8,6 +8,7 @@ import { toast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import CompressFileDisplay from '@/components/CompressPDFComponents/CompressFileDisplay';
 import CompressionSettings from '@/components/CompressPDFComponents/CompressionSettings';
+import { calculateEstimatedSize } from '@/lib/fileUtils';
 
 const CompressPDF = () => {
   const [files, setFiles] = useState<File[]>([]);
@@ -41,32 +42,13 @@ const CompressPDF = () => {
   // Calculate estimated file size based on compression percentage
   useEffect(() => {
     if (files.length > 0) {
-      const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-      
-      // Enhanced calculation: more accurate estimation for small file sizes
-      // Higher compression percentage means smaller file size
-      const reduction = compressionPercentage / 100;
-      
-      // Implement a more aggressive compression curve for higher percentages
-      let compressionFactor;
-      if (compressionPercentage < 30) {
-        compressionFactor = 0.5; // Low compression
-      } else if (compressionPercentage < 70) {
-        compressionFactor = 0.7; // Medium compression
-      } else if (compressionPercentage < 90) {
-        compressionFactor = 0.85; // High compression
-      } else {
-        compressionFactor = 0.95; // Extreme compression (up to 95% reduction)
-      }
-      
-      const estimated = Math.max(totalSize * (1 - reduction * compressionFactor), 10 * 1024); // Minimum 10KB
-      
-      // If a target size is set, use that instead
+      // Use the improved calculation function from fileUtils
+      const estimated = calculateEstimatedSize(originalSize, compressionPercentage);
       setEstimatedSize(estimated);
     } else {
       setEstimatedSize(null);
     }
-  }, [files, compressionPercentage, targetSize]);
+  }, [files, compressionPercentage, targetSize, originalSize]);
 
   // Update compression level based on slider percentage
   useEffect(() => {
@@ -123,23 +105,23 @@ const CompressPDF = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-12 px-4">
+    <div className="min-h-screen bg-gray-50 py-8 sm:py-12 px-3 sm:px-4">
       <div className="container mx-auto max-w-4xl">
-        <div className="flex flex-col items-center mb-8">
-          <div className="bg-purple-500 p-4 rounded-full">
-            <Compass className="h-8 w-8 text-white" />
+        <div className="flex flex-col items-center mb-6 sm:mb-8">
+          <div className="bg-purple-500 p-3 sm:p-4 rounded-full">
+            <Compass className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
           </div>
-          <h1 className="text-3xl font-bold mt-4">Compress PDF</h1>
-          <p className="text-gray-600 text-center mt-2">
+          <h1 className="text-2xl sm:text-3xl font-bold mt-3 sm:mt-4 text-center">Compress PDF</h1>
+          <p className="text-gray-600 text-center mt-2 text-sm sm:text-base">
             Reduce the size of your PDF files while maintaining quality
           </p>
         </div>
         
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6 sm:mb-8">
           <DropArea onFilesAdded={handleFilesAdded} />
           
           <Alert className="mt-4 bg-blue-50 border-blue-200">
-            <AlertDescription className="text-sm text-blue-800">
+            <AlertDescription className="text-xs sm:text-sm text-blue-800">
               Your uploaded files are automatically deleted within 10 minutes from our database. 
               We respect your privacy and ensure no data leaks occur.
             </AlertDescription>
@@ -147,7 +129,7 @@ const CompressPDF = () => {
         </div>
 
         {files.length > 0 && (
-          <div className="bg-white rounded-lg shadow-md p-6">
+          <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
             <CompressFileDisplay files={files} onRemove={handleRemoveFile} />
 
             <div className="mb-6">
@@ -184,13 +166,13 @@ const CompressPDF = () => {
         )}
 
         {/* How-to section */}
-        <div className="bg-purple-50 border border-purple-100 rounded-lg p-6 mt-8">
-          <h3 className="text-xl font-bold mb-4 text-purple-700">How to compress a PDF file</h3>
-          <ol className="list-decimal list-inside text-gray-700 space-y-3 ml-2">
-            <li className="pl-2">Upload your PDF file by clicking the upload area or dragging and dropping</li>
-            <li className="pl-2">Choose your desired compression level using the slider or presets</li>
-            <li className="pl-2">Click "Compress PDF" and wait for the process to complete</li>
-            <li className="pl-2">Download your compressed file when ready</li>
+        <div className="bg-purple-50 border border-purple-100 rounded-lg p-4 sm:p-6 mt-6 sm:mt-8">
+          <h3 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 text-purple-700">How to compress a PDF file</h3>
+          <ol className="list-decimal list-inside text-gray-700 space-y-2 sm:space-y-3 ml-0 sm:ml-2 text-sm sm:text-base">
+            <li className="pl-1 sm:pl-2">Upload your PDF file by clicking the upload area or dragging and dropping</li>
+            <li className="pl-1 sm:pl-2">Choose your desired compression level using the slider or presets</li>
+            <li className="pl-1 sm:pl-2">Click "Compress PDF" and wait for the process to complete</li>
+            <li className="pl-1 sm:pl-2">Download your compressed file when ready</li>
           </ol>
         </div>
       </div>
