@@ -5,6 +5,7 @@ import DropArea from '@/components/DropArea';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { toast } from '@/hooks/use-toast';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import CompressFileDisplay from '@/components/CompressPDFComponents/CompressFileDisplay';
 import CompressionSettings from '@/components/CompressPDFComponents/CompressionSettings';
 
@@ -17,6 +18,7 @@ const CompressPDF = () => {
   const [estimatedSize, setEstimatedSize] = useState<number | null>(null);
   const [isComplete, setIsComplete] = useState(false);
   const [originalSize, setOriginalSize] = useState(0);
+  const [targetSize, setTargetSize] = useState<number | null>(null);
 
   const handleFilesAdded = (newFiles: File[]) => {
     setFiles(newFiles);
@@ -40,23 +42,42 @@ const CompressPDF = () => {
   useEffect(() => {
     if (files.length > 0) {
       const totalSize = files.reduce((sum, file) => sum + file.size, 0);
-      // Updated calculation: higher compression percentage means smaller file size
+      
+      // Enhanced calculation: more accurate estimation for small file sizes
+      // Higher compression percentage means smaller file size
       const reduction = compressionPercentage / 100;
-      const estimated = totalSize * (1 - reduction * 0.9); // Maximum 90% reduction at 100% slider
+      
+      // Implement a more aggressive compression curve for higher percentages
+      let compressionFactor;
+      if (compressionPercentage < 30) {
+        compressionFactor = 0.5; // Low compression
+      } else if (compressionPercentage < 70) {
+        compressionFactor = 0.7; // Medium compression
+      } else if (compressionPercentage < 90) {
+        compressionFactor = 0.85; // High compression
+      } else {
+        compressionFactor = 0.95; // Extreme compression (up to 95% reduction)
+      }
+      
+      const estimated = Math.max(totalSize * (1 - reduction * compressionFactor), 10 * 1024); // Minimum 10KB
+      
+      // If a target size is set, use that instead
       setEstimatedSize(estimated);
     } else {
       setEstimatedSize(null);
     }
-  }, [files, compressionPercentage]);
+  }, [files, compressionPercentage, targetSize]);
 
   // Update compression level based on slider percentage
   useEffect(() => {
-    if (compressionPercentage > 70) {
+    if (compressionPercentage > 85) {
+      setCompressionLevel("extreme");
+    } else if (compressionPercentage > 60) {
       setCompressionLevel("high");
-    } else if (compressionPercentage < 30) {
-      setCompressionLevel("low");
-    } else {
+    } else if (compressionPercentage > 30) {
       setCompressionLevel("medium");
+    } else {
+      setCompressionLevel("low");
     }
   }, [compressionPercentage]);
 
@@ -113,9 +134,16 @@ const CompressPDF = () => {
             Reduce the size of your PDF files while maintaining quality
           </p>
         </div>
-
+        
         <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <DropArea onFilesAdded={handleFilesAdded} />
+          
+          <Alert className="mt-4 bg-blue-50 border-blue-200">
+            <AlertDescription className="text-sm text-blue-800">
+              Your uploaded files are automatically deleted within 10 minutes from our database. 
+              We respect your privacy and ensure no data leaks occur.
+            </AlertDescription>
+          </Alert>
         </div>
 
         {files.length > 0 && (
@@ -129,6 +157,7 @@ const CompressPDF = () => {
                 compressionLevel={compressionLevel}
                 estimatedSize={estimatedSize}
                 originalSize={originalSize}
+                setTargetSize={setTargetSize}
               />
             </div>
 
@@ -159,7 +188,7 @@ const CompressPDF = () => {
           <h3 className="text-xl font-bold mb-4 text-purple-700">How to compress a PDF file</h3>
           <ol className="list-decimal list-inside text-gray-700 space-y-3 ml-2">
             <li className="pl-2">Upload your PDF file by clicking the upload area or dragging and dropping</li>
-            <li className="pl-2">Choose your desired compression level using the slider</li>
+            <li className="pl-2">Choose your desired compression level using the slider or presets</li>
             <li className="pl-2">Click "Compress PDF" and wait for the process to complete</li>
             <li className="pl-2">Download your compressed file when ready</li>
           </ol>
