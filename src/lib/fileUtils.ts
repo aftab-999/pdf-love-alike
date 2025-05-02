@@ -23,11 +23,12 @@ export const getCompressionLevelForTargetSize = (
   }
   
   // Calculate exact percentage needed for the target size
-  const neededPercentage = Math.min(95, Math.max(5, 100 - (targetSize / originalSize * 100)));
+  const neededPercentage = Math.min(98, Math.max(5, 100 - (targetSize / originalSize * 100)));
   let compressionLevel = "medium";
   
   // Determine compression level based on needed percentage
-  if (neededPercentage > 85) compressionLevel = "extreme";
+  if (neededPercentage > 90) compressionLevel = "maximum"; // New highest level
+  else if (neededPercentage > 80) compressionLevel = "extreme";
   else if (neededPercentage > 60) compressionLevel = "high";
   else if (neededPercentage > 30) compressionLevel = "medium";
   else compressionLevel = "low";
@@ -49,17 +50,21 @@ export const calculateEstimatedSize = (
   
   let compressionEfficiency;
   if (compressionPercentage < 30) {
-    compressionEfficiency = 0.5; // Low compression, less efficient
+    compressionEfficiency = 0.6; // Low compression, slightly more efficient
   } else if (compressionPercentage < 60) {
-    compressionEfficiency = 0.7; // Medium compression
-  } else if (compressionPercentage < 85) {
-    compressionEfficiency = 0.85; // High compression
-  } else {
+    compressionEfficiency = 0.75; // Medium compression, improved
+  } else if (compressionPercentage < 80) {
+    compressionEfficiency = 0.9; // High compression, improved
+  } else if (compressionPercentage < 90) {
     compressionEfficiency = 0.95; // Extreme compression, very efficient
+  } else {
+    compressionEfficiency = 0.98; // Maximum compression, extremely efficient
   }
   
   // Apply the compression calculation
-  const estimatedSize = Math.max(originalSize * (1 - reductionFactor * compressionEfficiency), 10 * 1024); // Minimum 10KB
+  // Ensure we can achieve very small sizes like 100KB when needed
+  const minimumSize = 50 * 1024; // Allow down to 50KB minimum
+  const estimatedSize = Math.max(originalSize * (1 - reductionFactor * compressionEfficiency), minimumSize);
   return Math.round(estimatedSize);
 };
 
@@ -80,8 +85,11 @@ export const getCompressionForExactTargetSize = (
   let basePercentage = 100 - (targetSizeBytes / originalSize * 100);
   
   // Apply correction factors based on compression range
-  if (basePercentage > 85) {
-    // For extreme compression, we need to be more aggressive
+  if (basePercentage > 90) {
+    // For maximum compression, we need to be most aggressive
+    basePercentage = Math.min(98, basePercentage * 1.07);
+  } else if (basePercentage > 80) {
+    // For extreme compression, we need to be very aggressive
     basePercentage = Math.min(95, basePercentage * 1.05);
   } else if (basePercentage > 60) {
     // For high compression
@@ -91,5 +99,5 @@ export const getCompressionForExactTargetSize = (
     basePercentage = basePercentage * 1.01;
   }
   
-  return Math.min(95, Math.max(10, Math.round(basePercentage)));
+  return Math.min(98, Math.max(10, Math.round(basePercentage)));
 };

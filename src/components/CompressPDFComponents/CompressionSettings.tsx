@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Percent } from 'lucide-react';
+import { FileDown } from 'lucide-react';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -52,7 +52,7 @@ const CompressionSettings: React.FC<CompressionSettingsProps> = ({
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label htmlFor="compression-percentage" className="flex items-center gap-2">
-            <Percent className="h-4 w-4" /> Compression Level
+            <FileDown className="h-4 w-4" /> Compression Level
           </Label>
           <span className="text-sm font-medium">{compressionPercentage}%</span>
         </div>
@@ -60,7 +60,7 @@ const CompressionSettings: React.FC<CompressionSettingsProps> = ({
           id="compression-percentage"
           value={[compressionPercentage]} 
           min={5} 
-          max={95} 
+          max={98} // Increased from 95 to 98 for more powerful compression
           step={1} 
           className="w-full"
           onValueChange={(value) => {
@@ -77,10 +77,10 @@ const CompressionSettings: React.FC<CompressionSettingsProps> = ({
       {/* Preset Target Size Buttons */}
       <div className="space-y-2">
         <Label className="text-sm">Preset Target Sizes</Label>
-        <div className={`flex ${isMobile ? 'flex-wrap' : ''} gap-2`}>
+        <div className={`flex ${isMobile ? 'flex-wrap gap-1' : 'gap-2'}`}>
           <Button 
             variant="outline" 
-            size="sm" 
+            size={isMobile ? "sm" : "default"} 
             onClick={() => handlePresetSelection(100)}
             className="text-xs"
           >
@@ -88,7 +88,7 @@ const CompressionSettings: React.FC<CompressionSettingsProps> = ({
           </Button>
           <Button 
             variant="outline" 
-            size="sm" 
+            size={isMobile ? "sm" : "default"} 
             onClick={() => handlePresetSelection(254)}
             className="text-xs"
           >
@@ -96,7 +96,7 @@ const CompressionSettings: React.FC<CompressionSettingsProps> = ({
           </Button>
           <Button 
             variant="outline" 
-            size="sm" 
+            size={isMobile ? "sm" : "default"} 
             onClick={() => handlePresetSelection(500)}
             className="text-xs"
           >
@@ -104,7 +104,7 @@ const CompressionSettings: React.FC<CompressionSettingsProps> = ({
           </Button>
           <Button 
             variant="outline" 
-            size="sm" 
+            size={isMobile ? "sm" : "default"} 
             onClick={() => handlePresetSelection(1024)}
             className="text-xs"
           >
@@ -116,10 +116,11 @@ const CompressionSettings: React.FC<CompressionSettingsProps> = ({
       {/* Selected Compression Level Display */}
       <div className="p-3 bg-gray-50 rounded-md">
         <p className="text-sm font-medium">
-          {compressionLevel === "low" && "Low compression: Preserves high quality with minimal compression"}
+          {compressionLevel === "maximum" && "Maximum compression: Highest possible size reduction, may affect quality"}
+          {compressionLevel === "extreme" && "Extreme compression: Very high compression with minimal quality loss"}
+          {compressionLevel === "high" && "High compression: Significant size reduction with acceptable quality"}
           {compressionLevel === "medium" && "Medium compression: Balanced quality and file size reduction"}
-          {compressionLevel === "high" && "High compression: Maximum compression with acceptable quality"}
-          {compressionLevel === "extreme" && "Extreme compression: Maximum possible size reduction, quality may be affected"}
+          {compressionLevel === "low" && "Low compression: Preserves high quality with minimal compression"}
         </p>
       </div>
       

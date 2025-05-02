@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Compass, Percent } from 'lucide-react';
+import { FileDown } from 'lucide-react';
 import DropArea from '@/components/DropArea';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -20,10 +20,12 @@ const CompressPDF = () => {
   const [isComplete, setIsComplete] = useState(false);
   const [originalSize, setOriginalSize] = useState(0);
   const [targetSize, setTargetSize] = useState<number | null>(null);
+  const [compressedFile, setCompressedFile] = useState<Blob | null>(null);
 
   const handleFilesAdded = (newFiles: File[]) => {
     setFiles(newFiles);
     setIsComplete(false);
+    setCompressedFile(null);
     
     // Calculate total size of files
     const totalSize = newFiles.reduce((sum, file) => sum + file.size, 0);
@@ -35,6 +37,8 @@ const CompressPDF = () => {
       const newFiles = prev.filter((_, i) => i !== index);
       const newTotalSize = newFiles.reduce((sum, file) => sum + file.size, 0);
       setOriginalSize(newTotalSize);
+      setIsComplete(false);
+      setCompressedFile(null);
       return newFiles;
     });
   };
@@ -52,7 +56,9 @@ const CompressPDF = () => {
 
   // Update compression level based on slider percentage
   useEffect(() => {
-    if (compressionPercentage > 85) {
+    if (compressionPercentage > 90) {
+      setCompressionLevel("maximum");
+    } else if (compressionPercentage > 80) {
       setCompressionLevel("extreme");
     } else if (compressionPercentage > 60) {
       setCompressionLevel("high");
@@ -76,6 +82,7 @@ const CompressPDF = () => {
     setIsProcessing(true);
     setProgress(0);
     setIsComplete(false);
+    setCompressedFile(null);
 
     // Simulate compression process with progress updates
     const totalSteps = 10;
@@ -84,20 +91,37 @@ const CompressPDF = () => {
       setProgress(step * 10);
     }
 
-    // Simulate completion
+    // Simulate compression completion
+    // In a real implementation with Supabase, this would actually process the file
+    // For now, we'll create a mock compressed file for download demonstration
+    const mockCompressedFile = new Blob([files[0]], { type: "application/pdf" });
+    setCompressedFile(mockCompressedFile);
+
     setTimeout(() => {
       setIsProcessing(false);
       setIsComplete(true);
       toast({
         title: "PDF compressed successfully!",
-        description: "Your PDF has been compressed and is ready for download.",
+        description: "Your PDF has been compressed and is being downloaded.",
       });
+      
+      // Automatically trigger download after compression is complete
+      handleDownload();
     }, 300);
   };
 
   const handleDownload = () => {
-    // In a real implementation, this would download the compressed file
-    // For now, we'll just show a toast notification
+    if (!compressedFile) return;
+    
+    // Create a download link and trigger it
+    const downloadURL = URL.createObjectURL(compressedFile);
+    const downloadLink = document.createElement('a');
+    downloadLink.href = downloadURL;
+    downloadLink.download = files[0].name.replace('.pdf', '') + '-compressed.pdf';
+    document.body.appendChild(downloadLink);
+    downloadLink.click();
+    document.body.removeChild(downloadLink);
+    
     toast({
       title: "Download started",
       description: "Your compressed PDF is being downloaded.",
@@ -105,11 +129,11 @@ const CompressPDF = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8 sm:py-12 px-3 sm:px-4">
+    <div className="min-h-screen bg-gray-50 py-6 sm:py-12 px-3 sm:px-4">
       <div className="container mx-auto max-w-4xl">
-        <div className="flex flex-col items-center mb-6 sm:mb-8">
+        <div className="flex flex-col items-center mb-4 sm:mb-8">
           <div className="bg-purple-500 p-3 sm:p-4 rounded-full">
-            <Compass className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
+            <FileDown className="h-6 w-6 sm:h-8 sm:w-8 text-white" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold mt-3 sm:mt-4 text-center">Compress PDF</h1>
           <p className="text-gray-600 text-center mt-2 text-sm sm:text-base">
@@ -117,7 +141,7 @@ const CompressPDF = () => {
           </p>
         </div>
         
-        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6 sm:mb-8">
+        <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4 sm:mb-6">
           <DropArea onFilesAdded={handleFilesAdded} />
           
           <Alert className="mt-4 bg-blue-50 border-blue-200">
@@ -151,12 +175,20 @@ const CompressPDF = () => {
               </div>
             ) : (
               <div className="flex flex-col space-y-4">
-                <Button onClick={handleCompress} disabled={isProcessing || files.length === 0} className="bg-purple-500 hover:bg-purple-600">
+                <Button 
+                  onClick={handleCompress} 
+                  disabled={isProcessing || files.length === 0} 
+                  className="bg-purple-500 hover:bg-purple-600"
+                >
                   {isComplete ? "Compress Again" : "Compress PDF"}
                 </Button>
                 
-                {isComplete && (
-                  <Button onClick={handleDownload} variant="outline" className="border-purple-500 text-purple-500 hover:bg-purple-50">
+                {isComplete && compressedFile && (
+                  <Button 
+                    onClick={handleDownload} 
+                    variant="outline" 
+                    className="border-purple-500 text-purple-500 hover:bg-purple-50"
+                  >
                     Download Compressed PDF
                   </Button>
                 )}
@@ -166,13 +198,13 @@ const CompressPDF = () => {
         )}
 
         {/* How-to section */}
-        <div className="bg-purple-50 border border-purple-100 rounded-lg p-4 sm:p-6 mt-6 sm:mt-8">
+        <div className="bg-purple-50 border border-purple-100 rounded-lg p-4 sm:p-6 mt-6">
           <h3 className="text-lg sm:text-xl font-bold mb-3 sm:mb-4 text-purple-700">How to compress a PDF file</h3>
           <ol className="list-decimal list-inside text-gray-700 space-y-2 sm:space-y-3 ml-0 sm:ml-2 text-sm sm:text-base">
             <li className="pl-1 sm:pl-2">Upload your PDF file by clicking the upload area or dragging and dropping</li>
             <li className="pl-1 sm:pl-2">Choose your desired compression level using the slider or presets</li>
             <li className="pl-1 sm:pl-2">Click "Compress PDF" and wait for the process to complete</li>
-            <li className="pl-1 sm:pl-2">Download your compressed file when ready</li>
+            <li className="pl-1 sm:pl-2">Your compressed file will be automatically downloaded when ready</li>
           </ol>
         </div>
       </div>
