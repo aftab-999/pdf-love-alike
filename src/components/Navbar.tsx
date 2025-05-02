@@ -13,13 +13,16 @@ const Navbar = () => {
         </Link>
         
         <div className="hidden md:flex space-x-6 text-gray-600">
-          <Link to="/tools" className="hover:text-pdf-red transition-colors">
+          <Link to="/compress-pdf" className="hover:text-purple-500 transition-colors">
+            Compress PDF
+          </Link>
+          <Link to="/tools" className="hover:text-purple-500 transition-colors">
             All Tools
           </Link>
-          <Link to="#" className="hover:text-pdf-red transition-colors">
+          <Link to="#" className="hover:text-purple-500 transition-colors">
             How To
           </Link>
-          <Link to="#" className="hover:text-pdf-red transition-colors">
+          <Link to="#" className="hover:text-purple-500 transition-colors">
             Help
           </Link>
         </div>
@@ -28,7 +31,7 @@ const Navbar = () => {
           <Button variant="outline" className="hidden md:block">
             Sign In
           </Button>
-          <Button className="bg-pdf-red hover:bg-red-700 text-white">
+          <Button className="bg-purple-500 hover:bg-purple-600 text-white">
             Sign Up
           </Button>
         </div>

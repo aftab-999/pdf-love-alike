@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { FileText } from 'lucide-react';
+import { Compress } from 'lucide-react';
 
 interface LogoProps {
   size?: number;
@@ -10,9 +10,9 @@ interface LogoProps {
 const Logo = ({ size = 28, className = '' }: LogoProps) => {
   return (
     <div className={`flex items-center gap-2 ${className}`}>
-      <FileText size={size} className="text-pdf-red" />
+      <Compress size={size} className="text-purple-500" />
       <span className="font-bold text-xl">
-        i<span className="text-pdf-red">love</span>pdf
+        Compress<span className="text-purple-500">ify.ai</span>
       </span>
     </div>
   );

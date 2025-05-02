@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   FileImage, Images, Merge, FileMinus, Compass, 
@@ -10,7 +11,15 @@ import { useNavigate } from 'react-router-dom';
 const HomePage = () => {
   const navigate = useNavigate();
   
+  // Reordered tools with Compress PDF first
   const tools = [
+    {
+      title: 'Compress PDF',
+      description: 'Reduce the size of your PDF',
+      icon: Compass,
+      color: 'bg-purple-500',
+      path: '/compress-pdf'
+    },
     {
       title: 'PDF to Image',
       description: 'Convert PDF pages to JPG or PNG images',
@@ -40,13 +49,6 @@ const HomePage = () => {
       path: '/split-pdf'
     },
     {
-      title: 'Compress PDF',
-      description: 'Reduce the size of your PDF',
-      icon: Compass,
-      color: 'bg-purple-500',
-      path: '/compress-pdf'
-    },
-    {
       title: 'Protect PDF',
       description: 'Add password to your PDF',
       icon: Lock,
@@ -72,7 +74,7 @@ const HomePage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Hero section */}
-      <div className="bg-gradient-to-r from-pdf-red to-red-700 text-white py-16 px-4">
+      <div className="bg-gradient-to-r from-purple-500 to-purple-700 text-white py-16 px-4">
         <div className="container mx-auto text-center">
           <h1 className="text-4xl md:text-5xl font-bold mb-6 animate-fade-in">
             Every PDF tool you need in one place
@@ -82,7 +84,7 @@ const HomePage = () => {
           </p>
           <Button 
             size="lg" 
-            className="bg-white text-pdf-red hover:bg-gray-100 font-bold text-lg px-8 py-6 h-auto"
+            className="bg-white text-purple-500 hover:bg-gray-100 font-bold text-lg px-8 py-6 h-auto"
             onClick={() => navigate('/tools')}
           >
             View All Tools
@@ -110,12 +112,12 @@ const HomePage = () => {
       {/* Features section */}
       <div className="bg-white py-16 px-4">
         <div className="container mx-auto">
-          <h2 className="text-3xl font-bold text-center mb-12">Why Choose Our PDF Tools?</h2>
+          <h2 className="text-3xl font-bold text-center mb-12">Why Choose Compressify.ai?</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center">
               <div className="bg-blue-50 p-4 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
-                <Lock className="text-pdf-blue" size={32} />
+                <Lock className="text-purple-500" size={32} />
               </div>
               <h3 className="text-xl font-semibold mb-2">Secure Processing</h3>
               <p className="text-gray-600">Your files are securely processed and automatically deleted after 2 hours.</p>
@@ -148,7 +150,7 @@ const HomePage = () => {
         </p>
         <Button 
           size="lg" 
-          className="bg-pdf-red hover:bg-red-700 text-white font-bold text-lg px-8 py-6 h-auto"
+          className="bg-purple-500 hover:bg-purple-700 text-white font-bold text-lg px-8 py-6 h-auto"
           onClick={() => navigate('/tools')}
         >
           Try for Free Now

@@ -4,10 +4,9 @@ import { Compass, Percent } from 'lucide-react';
 import DropArea from '@/components/DropArea';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Slider } from '@/components/ui/slider';
-import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
+import CompressFileDisplay from '@/components/CompressPDFComponents/CompressFileDisplay';
+import CompressionSettings from '@/components/CompressPDFComponents/CompressionSettings';
 
 const CompressPDF = () => {
   const [files, setFiles] = useState<File[]>([]);
@@ -17,10 +16,24 @@ const CompressPDF = () => {
   const [compressionPercentage, setCompressionPercentage] = useState(50);
   const [estimatedSize, setEstimatedSize] = useState<number | null>(null);
   const [isComplete, setIsComplete] = useState(false);
+  const [originalSize, setOriginalSize] = useState(0);
 
   const handleFilesAdded = (newFiles: File[]) => {
     setFiles(newFiles);
     setIsComplete(false);
+    
+    // Calculate total size of files
+    const totalSize = newFiles.reduce((sum, file) => sum + file.size, 0);
+    setOriginalSize(totalSize);
+  };
+
+  const handleRemoveFile = (index: number) => {
+    setFiles(prev => {
+      const newFiles = prev.filter((_, i) => i !== index);
+      const newTotalSize = newFiles.reduce((sum, file) => sum + file.size, 0);
+      setOriginalSize(newTotalSize);
+      return newFiles;
+    });
   };
 
   // Calculate estimated file size based on compression percentage
@@ -88,18 +101,6 @@ const CompressPDF = () => {
     });
   };
 
-  const compressionOptions = [
-    { value: "low", label: "Low compression (higher quality)" },
-    { value: "medium", label: "Medium compression (balanced)" },
-    { value: "high", label: "High compression (smaller size)" },
-  ];
-
-  const formatFileSize = (bytes: number): string => {
-    if (bytes < 1024) return `${bytes} bytes`;
-    else if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
-    else return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-  };
-
   return (
     <div className="min-h-screen bg-gray-50 py-12 px-4">
       <div className="container mx-auto max-w-4xl">
@@ -113,79 +114,22 @@ const CompressPDF = () => {
           </p>
         </div>
 
-        {files.length === 0 ? (
+        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
           <DropArea onFilesAdded={handleFilesAdded} />
-        ) : (
+        </div>
+
+        {files.length > 0 && (
           <div className="bg-white rounded-lg shadow-md p-6">
-            <div className="mb-6">
-              <h3 className="text-lg font-medium mb-2">Selected Files</h3>
-              <ul className="space-y-2">
-                {files.map((file, index) => (
-                  <li key={index} className="flex items-center justify-between p-3 border rounded-md">
-                    <span>{file.name} ({formatFileSize(file.size)})</span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setFiles(prev => prev.filter((_, i) => i !== index))}
-                    >
-                      Remove
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </div>
+            <CompressFileDisplay files={files} onRemove={handleRemoveFile} />
 
             <div className="mb-6">
-              <div className="flex flex-col space-y-4">
-                {/* Compression Percentage Slider */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="compression-percentage" className="flex items-center gap-2">
-                      <Percent className="h-4 w-4" /> Compression Level
-                    </Label>
-                    <span className="text-sm font-medium">{compressionPercentage}%</span>
-                  </div>
-                  <Slider 
-                    id="compression-percentage"
-                    value={[compressionPercentage]} 
-                    min={0} 
-                    max={100} 
-                    step={1} 
-                    className="w-full"
-                    onValueChange={(value) => setCompressionPercentage(value[0])}
-                  />
-                  <div className="flex justify-between text-xs text-gray-500">
-                    <span>Minimum Compression</span>
-                    <span>Maximum Compression</span>
-                  </div>
-                </div>
-
-                {/* Selected Compression Level Display */}
-                <div className="p-3 bg-gray-50 rounded-md">
-                  <p className="text-sm font-medium">
-                    {compressionLevel === "low" && "Low compression: Preserves high quality with minimal compression"}
-                    {compressionLevel === "medium" && "Medium compression: Balanced quality and file size reduction"}
-                    {compressionLevel === "high" && "High compression: Maximum compression with acceptable quality"}
-                  </p>
-                </div>
-                
-                {/* Estimated Size Information */}
-                {estimatedSize !== null && (
-                  <div className="p-3 bg-blue-50 border border-blue-100 rounded-md">
-                    <p className="text-sm flex items-center justify-between">
-                      <span className="font-medium">Original Size:</span>
-                      <span>{formatFileSize(files.reduce((sum, file) => sum + file.size, 0))}</span>
-                    </p>
-                    <p className="text-sm flex items-center justify-between mt-1">
-                      <span className="font-medium">Estimated Size:</span>
-                      <span className="text-blue-700">{formatFileSize(estimatedSize)}</span>
-                    </p>
-                    <p className="text-xs text-gray-500 mt-2">
-                      Note: Actual compressed size may vary based on PDF content
-                    </p>
-                  </div>
-                )}
-              </div>
+              <CompressionSettings 
+                compressionPercentage={compressionPercentage}
+                setCompressionPercentage={setCompressionPercentage}
+                compressionLevel={compressionLevel}
+                estimatedSize={estimatedSize}
+                originalSize={originalSize}
+              />
             </div>
 
             {isProcessing ? (
@@ -209,6 +153,17 @@ const CompressPDF = () => {
             )}
           </div>
         )}
+
+        {/* How-to section */}
+        <div className="bg-purple-50 border border-purple-100 rounded-lg p-6 mt-8">
+          <h3 className="text-xl font-bold mb-4 text-purple-700">How to compress a PDF file</h3>
+          <ol className="list-decimal list-inside text-gray-700 space-y-3 ml-2">
+            <li className="pl-2">Upload your PDF file by clicking the upload area or dragging and dropping</li>
+            <li className="pl-2">Choose your desired compression level using the slider</li>
+            <li className="pl-2">Click "Compress PDF" and wait for the process to complete</li>
+            <li className="pl-2">Download your compressed file when ready</li>
+          </ol>
+        </div>
       </div>
     </div>
   );

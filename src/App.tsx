@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import Layout from "./components/Layout";
 import HomePage from "./pages/HomePage";
 import ToolsPage from "./pages/ToolsPage";
@@ -26,12 +26,13 @@ function App() {
           <Sonner />
           <Layout>
             <Routes>
-              <Route path="/" element={<HomePage />} />
+              <Route path="/" element={<Navigate to="/compress-pdf" replace />} />
+              <Route path="/compress-pdf" element={<CompressPDF />} />
               <Route path="/tools" element={<ToolsPage />} />
               <Route path="/merge-pdf" element={<MergePDF />} />
               <Route path="/split-pdf" element={<SplitPDF />} />
               <Route path="/pdf-to-image" element={<PdfToImage />} />
-              <Route path="/compress-pdf" element={<CompressPDF />} />
+              <Route path="/home" element={<HomePage />} />
               {/* More routes will be added as we implement them */}
               <Route path="*" element={<NotFound />} />
             </Routes>

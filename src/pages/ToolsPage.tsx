@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { 
   FileImage, Images, Merge, FileMinus, Compass, 
@@ -9,20 +10,21 @@ import { useNavigate } from 'react-router-dom';
 const ToolsPage = () => {
   const navigate = useNavigate();
   
+  // Reordered tools with Compress PDF first
   const allTools = [
+    {
+      title: 'Compress PDF',
+      description: 'Reduce the size of your PDF',
+      icon: Compass,
+      color: 'bg-purple-500',
+      path: '/compress-pdf'
+    },
     {
       title: 'PDF to Image',
       description: 'Convert PDF pages to JPG or PNG images',
       icon: FileImage,
       color: 'bg-pdf-red',
       path: '/pdf-to-image'
-    },
-    {
-      title: 'Image to PDF',
-      description: 'Convert JPG or PNG images to PDF',
-      icon: Images,
-      color: 'bg-green-500',
-      path: '/image-to-pdf'
     },
     {
       title: 'Merge PDF',
@@ -39,11 +41,11 @@ const ToolsPage = () => {
       path: '/split-pdf'
     },
     {
-      title: 'Compress PDF',
-      description: 'Reduce the size of your PDF',
-      icon: Compass,
-      color: 'bg-purple-500',
-      path: '/compress-pdf'
+      title: 'Image to PDF',
+      description: 'Convert JPG or PNG images to PDF',
+      icon: Images,
+      color: 'bg-green-500',
+      path: '/image-to-pdf'
     },
     {
       title: 'Protect PDF',

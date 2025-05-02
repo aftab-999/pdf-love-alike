@@ -2,7 +2,7 @@
 import React, { useState, useCallback } from 'react';
 import { Upload, File } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/components/ui/use-toast';
+import { useToast } from '@/hooks/use-toast';
 
 interface DropAreaProps {
   acceptedTypes?: string[];
@@ -90,7 +90,9 @@ const DropArea: React.FC<DropAreaProps> = ({
 
   return (
     <div
-      className={`drop-area ${isDragging ? 'border-pdf-blue bg-blue-50' : ''}`}
+      className={`drop-area border-2 border-dashed rounded-lg p-8 flex flex-col items-center justify-center transition-colors ${
+        isDragging ? 'border-purple-500 bg-purple-50' : 'border-gray-300 hover:border-purple-400'
+      }`}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -100,7 +102,7 @@ const DropArea: React.FC<DropAreaProps> = ({
       <h3 className="text-xl font-semibold mb-2">Drop your PDF files here</h3>
       <p className="text-gray-500 mb-4 text-center">or</p>
       
-      <Button className="bg-pdf-blue hover:bg-blue-600" asChild>
+      <Button className="bg-purple-500 hover:bg-purple-600" asChild>
         <label>
           <input
             type="file"
