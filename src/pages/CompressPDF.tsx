@@ -12,7 +12,8 @@ import {
   calculateEstimatedSize, 
   compressPDF,
   compressPDFToTargetSize,
-  formatFileSize
+  formatFileSize,
+  calculateCompressionPercentage
 } from '@/lib/fileUtils';
 
 const CompressPDF = () => {
@@ -99,6 +100,7 @@ const CompressPDF = () => {
       
       // Get the file to compress
       const fileToCompress = files[0];
+      console.log("Original size:", fileToCompress.size);
       
       let compressedBlob: Blob;
       
@@ -107,31 +109,33 @@ const CompressPDF = () => {
         // Compress to target size in KB
         const targetKB = Math.round(targetSize / 1024);
         setProgress(30);
+        console.log(`Compressing to target size: ${targetKB}KB`);
         compressedBlob = await compressPDFToTargetSize(fileToCompress, targetKB);
       } else {
         // Compress using the selected compression level
         setProgress(30);
+        console.log(`Compressing with level: ${compressionLevel}`);
         compressedBlob = await compressPDF(fileToCompress, compressionLevel);
       }
       
       setProgress(80);
+      console.log("Compressed size:", compressedBlob.size);
       
       // Set the compressed file for download
       setCompressedFile(compressedBlob);
       setActualCompressedSize(compressedBlob.size);
       
+      // Log compression rate achieved
+      const compressionRate = calculateCompressionPercentage(fileToCompress.size, compressedBlob.size);
+      console.log(`Compression rate achieved: ${compressionRate}%`);
+      
       setProgress(100);
       setIsComplete(true);
       
-      // Automatically download after compression
-      setTimeout(() => {
-        handleDownload();
-        
-        toast({
-          title: "PDF compressed successfully!",
-          description: `Original size: ${formatFileSize(fileToCompress.size)}. New size: ${formatFileSize(compressedBlob.size)}`,
-        });
-      }, 500);
+      toast({
+        title: "PDF compressed successfully!",
+        description: `Original: ${formatFileSize(fileToCompress.size)} → Compressed: ${formatFileSize(compressedBlob.size)} (${compressionRate}% smaller)`,
+      });
       
     } catch (error) {
       console.error("Compression error:", error);
@@ -156,6 +160,9 @@ const CompressPDF = () => {
     document.body.appendChild(downloadLink);
     downloadLink.click();
     document.body.removeChild(downloadLink);
+    
+    // Clean up the URL
+    URL.revokeObjectURL(downloadURL);
     
     toast({
       title: "Download started",
