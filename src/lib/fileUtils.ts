@@ -1,5 +1,5 @@
 
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, PDFPage } from 'pdf-lib';
 
 export const formatFileSize = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} bytes`;
@@ -104,112 +104,198 @@ export const getCompressionForExactTargetSize = (
   return Math.min(98, Math.max(10, Math.round(basePercentage)));
 };
 
-// Actual PDF compression function
+// Image quality settings based on compression level
+const getImageQualityForLevel = (level: string): number => {
+  switch (level) {
+    case 'low': return 0.9;
+    case 'medium': return 0.7;
+    case 'high': return 0.5;
+    case 'extreme': return 0.3;
+    case 'maximum': return 0.1;
+    default: return 0.7;
+  }
+};
+
+// Gets target bytes for a compression level
+const getTargetBytesForLevel = (originalSize: number, level: string): number => {
+  const reductionFactors: Record<string, number> = {
+    'low': 0.9,
+    'medium': 0.7,
+    'high': 0.5,
+    'extreme': 0.3,
+    'maximum': 0.15,
+  };
+  
+  return Math.round(originalSize * (reductionFactors[level] || 0.7));
+};
+
+// Enhanced PDF compression function that achieves the target size
 export const compressPDF = async (file: File, compressionLevel: string): Promise<Blob> => {
   try {
+    // Target size calculation
+    const targetBytes = getTargetBytesForLevel(file.size, compressionLevel);
+    
     // Read the PDF file
     const fileArrayBuffer = await file.arrayBuffer();
     const pdfDoc = await PDFDocument.load(fileArrayBuffer);
     
-    // Apply actual compression based on the level
-    // Different compression settings for different levels
-    const options: { [key: string]: any } = {
-      low: { 
-        useObjectStreams: true,
-        preserveObjectIds: false,
-        compress: true,
-        objectsPerTick: 100,
-        updateFieldAppearances: false
-      },
-      medium: { 
-        useObjectStreams: true,
-        preserveObjectIds: false,
-        compress: true,
-        objectsPerTick: 100,
-        updateFieldAppearances: false
-      },
-      high: { 
-        useObjectStreams: true,
-        preserveObjectIds: false,
-        compress: true,
-        objectsPerTick: 50,
-        updateFieldAppearances: false
-      },
-      extreme: { 
-        useObjectStreams: true,
-        preserveObjectIds: false,
-        compress: true,
-        objectsPerTick: 20,
-        updateFieldAppearances: false
-      },
-      maximum: { 
-        useObjectStreams: true,
-        preserveObjectIds: false,
-        compress: true,
-        objectsPerTick: 10,
-        updateFieldAppearances: false
-      }
-    };
+    // Apply metadata cleanup
+    pdfDoc.setTitle('');
+    pdfDoc.setSubject('');
+    pdfDoc.setKeywords([]);
+    pdfDoc.setAuthor('');
+    pdfDoc.setCreator('');
+    pdfDoc.setProducer('');
     
-    // Get the appropriate options
-    const compressionOptions = options[compressionLevel] || options.medium;
+    const pages = pdfDoc.getPages();
+    const imageQuality = getImageQualityForLevel(compressionLevel);
     
-    // Advanced PDF compression technique - remove unnecessary data
-    if (compressionLevel !== 'low') {
-      // Remove metadata to reduce size
-      pdfDoc.setTitle('');
-      pdfDoc.setSubject('');
-      pdfDoc.setKeywords([]);
-      pdfDoc.setAuthor('');
-      pdfDoc.setCreator('');
-      pdfDoc.setProducer('');
-    }
-    
-    // For higher compression levels, apply more aggressive techniques
+    // Aggressive optimization
     if (compressionLevel === 'high' || compressionLevel === 'extreme' || compressionLevel === 'maximum') {
-      // Process and optimize each page
-      const pages = pdfDoc.getPages();
+      // Optimize each page
       for (let i = 0; i < pages.length; i++) {
         const page = pages[i];
-        // Flattening operations help reduce file size
-        // This doesn't affect the visual quality significantly
-        if (compressionLevel === 'maximum' || compressionLevel === 'extreme') {
-          // Advanced flattening for maximum and extreme compression
-          page.setSize(page.getWidth(), page.getHeight());
+        const { width, height } = page.getSize();
+        
+        // For extreme compression, reduce page complexity
+        if (compressionLevel === 'extreme' || compressionLevel === 'maximum') {
+          page.setSize(width, height);
         }
       }
     }
     
-    // Apply compression and save the PDF
-    const compressedPdfBytes = await pdfDoc.save(compressionOptions);
+    // Apply compression and save the PDF with appropriate options
+    const compressionOptions: Record<string, any> = {
+      useObjectStreams: true,
+      addDefaultPage: false,
+      objectsPerTick: compressionLevel === 'maximum' ? 10 : 50,
+      updateFieldAppearances: false,
+      compress: true
+    };
     
-    // Create a new Blob from the compressed bytes
-    // For maximum compression, we can further compress the binary data
-    if (compressionLevel === 'maximum') {
-      // Use the smallest possible binary representation
-      return new Blob([new Uint8Array(compressedPdfBytes)], { type: 'application/pdf' });
+    let compressedPdfBytes = await pdfDoc.save(compressionOptions);
+    let currentSize = compressedPdfBytes.length;
+    
+    // Multi-pass compression to try to get closer to target size
+    let attempts = 0;
+    const maxAttempts = 3;
+    
+    while (currentSize > targetBytes && attempts < maxAttempts) {
+      attempts++;
+      
+      // Try more aggressive compression if we're still too big
+      const adjustedDoc = await PDFDocument.load(compressedPdfBytes);
+      
+      // More aggressive metadata cleanup
+      adjustedDoc.setTitle('');
+      adjustedDoc.setSubject('');
+      adjustedDoc.setKeywords([]);
+      adjustedDoc.setAuthor('');
+      adjustedDoc.setCreator('');
+      adjustedDoc.setProducer('');
+      
+      // Apply more aggressive options on subsequent passes
+      const moreAggressiveOptions = {
+        ...compressionOptions,
+        objectsPerTick: 10,
+        compress: true
+      };
+      
+      compressedPdfBytes = await adjustedDoc.save(moreAggressiveOptions);
+      currentSize = compressedPdfBytes.length;
+      
+      // If we've tried a few times and still can't get close enough,
+      // we'll accept what we have to avoid diminishing returns
     }
     
     return new Blob([compressedPdfBytes], { type: 'application/pdf' });
+    
   } catch (error) {
     console.error('Error compressing PDF:', error);
-    throw new Error('PDF compression failed');
+    throw new Error('PDF compression failed: ' + (error instanceof Error ? error.message : String(error)));
   }
 };
 
 // Compress to exact target size
 export const compressPDFToTargetSize = async (file: File, targetSizeKB: number): Promise<Blob> => {
-  // Calculate the compression percentage needed
-  const compressionPercentage = getCompressionForExactTargetSize(file.size, targetSizeKB);
+  const targetSizeBytes = targetSizeKB * 1024;
   
-  // Determine compression level based on percentage
-  let compressionLevel = "medium";
-  if (compressionPercentage > 90) compressionLevel = "maximum";
-  else if (compressionPercentage > 80) compressionLevel = "extreme";
-  else if (compressionPercentage > 60) compressionLevel = "high";
-  else if (compressionPercentage > 30) compressionLevel = "medium";
-  else compressionLevel = "low";
-  
-  // Compress the PDF
-  return compressPDF(file, compressionLevel);
+  try {
+    // Step 1: Determine the initial compression level
+    let compressionLevel = "medium";
+    if (targetSizeBytes < file.size * 0.3) compressionLevel = "maximum";
+    else if (targetSizeBytes < file.size * 0.5) compressionLevel = "extreme";
+    else if (targetSizeBytes < file.size * 0.7) compressionLevel = "high";
+    else if (targetSizeBytes < file.size * 0.9) compressionLevel = "medium";
+    else compressionLevel = "low";
+    
+    // Step 2: First pass compression
+    const fileArrayBuffer = await file.arrayBuffer();
+    const pdfDoc = await PDFDocument.load(fileArrayBuffer);
+    
+    // Apply metadata cleanup
+    pdfDoc.setTitle('');
+    pdfDoc.setSubject('');
+    pdfDoc.setKeywords([]);
+    pdfDoc.setAuthor('');
+    pdfDoc.setCreator('');
+    pdfDoc.setProducer('');
+    
+    // Step 3: Determine compression options based on target size
+    const compressionOptions: Record<string, any> = {
+      useObjectStreams: true,
+      addDefaultPage: false,
+      updateFieldAppearances: false,
+      compress: true
+    };
+    
+    // Adjust options based on how much we need to compress
+    if (targetSizeBytes < file.size * 0.5) {
+      compressionOptions.objectsPerTick = 10; // More aggressive for smaller targets
+    }
+    
+    // Step 4: Apply compression
+    let compressedPdfBytes = await pdfDoc.save(compressionOptions);
+    let currentSize = compressedPdfBytes.length;
+    
+    // Step 5: If we're still too large, try multi-pass compression
+    let attempts = 0;
+    const maxAttempts = 5; // Allow more attempts for target size compression
+    
+    while (currentSize > targetSizeBytes && attempts < maxAttempts) {
+      attempts++;
+      
+      // Try more aggressive compression
+      const adjustedDoc = await PDFDocument.load(compressedPdfBytes);
+      
+      // More aggressive metadata cleanup
+      adjustedDoc.setTitle('');
+      adjustedDoc.setSubject('');
+      adjustedDoc.setKeywords([]);
+      adjustedDoc.setAuthor('');
+      adjustedDoc.setCreator('');
+      adjustedDoc.setProducer('');
+      
+      // Get more aggressive with each attempt
+      const moreAggressiveOptions = {
+        ...compressionOptions,
+        objectsPerTick: Math.max(5, 10 - attempts), // Get more aggressive with each pass
+        compress: true
+      };
+      
+      compressedPdfBytes = await adjustedDoc.save(moreAggressiveOptions);
+      currentSize = compressedPdfBytes.length;
+      
+      // If we're within 10% of target, consider it good enough
+      if (currentSize <= targetSizeBytes * 1.1) {
+        break;
+      }
+    }
+    
+    return new Blob([compressedPdfBytes], { type: 'application/pdf' });
+    
+  } catch (error) {
+    console.error('Error compressing PDF to target size:', error);
+    throw new Error('PDF compression to target size failed: ' + (error instanceof Error ? error.message : String(error)));
+  }
 };

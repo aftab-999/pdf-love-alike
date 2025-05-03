@@ -58,6 +58,7 @@ const CompressPDF = () => {
       // Use the improved calculation function from fileUtils
       const estimated = calculateEstimatedSize(originalSize, compressionPercentage);
       setEstimatedSize(estimated);
+      console.log(`Estimated size with ${compressionPercentage}% compression: ${formatFileSize(estimated)}`);
     } else {
       setEstimatedSize(null);
     }
@@ -65,17 +66,20 @@ const CompressPDF = () => {
 
   // Update compression level based on slider percentage
   useEffect(() => {
+    let newLevel = "medium";
     if (compressionPercentage > 90) {
-      setCompressionLevel("maximum");
+      newLevel = "maximum";
     } else if (compressionPercentage > 80) {
-      setCompressionLevel("extreme");
+      newLevel = "extreme";
     } else if (compressionPercentage > 60) {
-      setCompressionLevel("high");
+      newLevel = "high";
     } else if (compressionPercentage > 30) {
-      setCompressionLevel("medium");
+      newLevel = "medium";
     } else {
-      setCompressionLevel("low");
+      newLevel = "low";
     }
+    setCompressionLevel(newLevel);
+    console.log(`Compression level updated to: ${newLevel}`);
   }, [compressionPercentage]);
 
   const handleCompress = async () => {
@@ -100,7 +104,8 @@ const CompressPDF = () => {
       
       // Get the file to compress
       const fileToCompress = files[0];
-      console.log("Original size:", fileToCompress.size);
+      console.log(`Starting compression: Original size: ${formatFileSize(fileToCompress.size)}`);
+      console.log(`Compression method: ${targetSize !== null ? 'Target size' : 'Compression level'}`);
       
       let compressedBlob: Blob;
       
@@ -119,7 +124,6 @@ const CompressPDF = () => {
       }
       
       setProgress(80);
-      console.log("Compressed size:", compressedBlob.size);
       
       // Set the compressed file for download
       setCompressedFile(compressedBlob);
@@ -127,7 +131,13 @@ const CompressPDF = () => {
       
       // Log compression rate achieved
       const compressionRate = calculateCompressionPercentage(fileToCompress.size, compressedBlob.size);
-      console.log(`Compression rate achieved: ${compressionRate}%`);
+      console.log(`Compression complete: 
+      - Original: ${formatFileSize(fileToCompress.size)} 
+      - Compressed: ${formatFileSize(compressedBlob.size)} 
+      - Reduction: ${compressionRate}%
+      - Estimated: ${estimatedSize ? formatFileSize(estimatedSize) : 'Not calculated'}
+      - Difference from estimate: ${estimatedSize ? formatFileSize(Math.abs(estimatedSize - compressedBlob.size)) : 'N/A'}
+      `);
       
       setProgress(100);
       setIsComplete(true);
@@ -141,7 +151,7 @@ const CompressPDF = () => {
       console.error("Compression error:", error);
       toast({
         title: "Compression failed",
-        description: "There was an error compressing your PDF. Please try again.",
+        description: error instanceof Error ? error.message : "There was an error compressing your PDF. Please try again.",
         variant: "destructive",
       });
     } finally {
