@@ -28,12 +28,14 @@ const CompressPDF = () => {
   const [targetSize, setTargetSize] = useState<number | null>(null);
   const [compressedFile, setCompressedFile] = useState<Blob | null>(null);
   const [actualCompressedSize, setActualCompressedSize] = useState<number | null>(null);
+  const [compressionSuccessful, setCompressionSuccessful] = useState(false);
 
   const handleFilesAdded = (newFiles: File[]) => {
     setFiles(newFiles);
     setIsComplete(false);
     setCompressedFile(null);
     setActualCompressedSize(null);
+    setCompressionSuccessful(false);
     
     // Calculate total size of files
     const totalSize = newFiles.reduce((sum, file) => sum + file.size, 0);
@@ -48,6 +50,7 @@ const CompressPDF = () => {
       setIsComplete(false);
       setCompressedFile(null);
       setActualCompressedSize(null);
+      setCompressionSuccessful(false);
       return newFiles;
     });
   };
@@ -97,6 +100,7 @@ const CompressPDF = () => {
     setIsComplete(false);
     setCompressedFile(null);
     setActualCompressedSize(null);
+    setCompressionSuccessful(false);
 
     try {
       // Start progress indication
@@ -139,13 +143,25 @@ const CompressPDF = () => {
       - Difference from estimate: ${estimatedSize ? formatFileSize(Math.abs(estimatedSize - compressedBlob.size)) : 'N/A'}
       `);
       
+      // Determine if compression was successful (at least 5% reduction)
+      const isSuccessful = compressionRate >= 5;
+      setCompressionSuccessful(isSuccessful);
+      
       setProgress(100);
       setIsComplete(true);
       
-      toast({
-        title: "PDF compressed successfully!",
-        description: `Original: ${formatFileSize(fileToCompress.size)} → Compressed: ${formatFileSize(compressedBlob.size)} (${compressionRate}% smaller)`,
-      });
+      if (isSuccessful) {
+        toast({
+          title: "PDF compressed successfully!",
+          description: `Original: ${formatFileSize(fileToCompress.size)} → Compressed: ${formatFileSize(compressedBlob.size)} (${compressionRate}% smaller)`,
+        });
+      } else {
+        toast({
+          title: "Limited compression achieved",
+          description: "The PDF could not be compressed significantly. Try a different PDF or higher compression level.",
+          variant: "destructive",
+        });
+      }
       
     } catch (error) {
       console.error("Compression error:", error);
@@ -221,7 +237,7 @@ const CompressPDF = () => {
 
             {isProcessing ? (
               <div className="space-y-4">
-                <p className="text-center">Processing...</p>
+                <p className="text-center">Processing your PDF...</p>
                 <Progress value={progress} className="h-2" />
                 <p className="text-center text-sm text-gray-500">{progress}% complete</p>
               </div>
@@ -246,15 +262,28 @@ const CompressPDF = () => {
                     </Button>
                     
                     {actualCompressedSize && (
-                      <div className="p-3 bg-green-50 border border-green-100 rounded-md">
+                      <div className={`p-3 ${compressionSuccessful ? 'bg-green-50 border-green-100' : 'bg-yellow-50 border-yellow-100'} border rounded-md`}>
                         <p className="text-sm flex items-center justify-between">
                           <span className="font-medium">Original size:</span>
                           <span>{formatFileSize(originalSize)}</span>
                         </p>
                         <p className="text-sm flex items-center justify-between mt-1">
                           <span className="font-medium">Compressed size:</span>
-                          <span className="text-green-700">{formatFileSize(actualCompressedSize)}</span>
+                          <span className={compressionSuccessful ? 'text-green-700' : 'text-yellow-700'}>
+                            {formatFileSize(actualCompressedSize)}
+                          </span>
                         </p>
+                        <p className="text-sm flex items-center justify-between mt-1">
+                          <span className="font-medium">Reduction:</span>
+                          <span className={compressionSuccessful ? 'text-green-700' : 'text-yellow-700'}>
+                            {calculateCompressionPercentage(originalSize, actualCompressedSize)}%
+                          </span>
+                        </p>
+                        {!compressionSuccessful && (
+                          <p className="text-xs text-yellow-700 mt-2">
+                            Limited compression achieved. This PDF may already be optimized or contain content that's difficult to compress.
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -271,7 +300,7 @@ const CompressPDF = () => {
             <li className="pl-1 sm:pl-2">Upload your PDF file by clicking the upload area or dragging and dropping</li>
             <li className="pl-1 sm:pl-2">Choose your desired compression level using the slider or presets</li>
             <li className="pl-1 sm:pl-2">Click "Compress PDF" and wait for the process to complete</li>
-            <li className="pl-1 sm:pl-2">Your compressed file will be automatically downloaded when ready</li>
+            <li className="pl-1 sm:pl-2">Your compressed file will be available for download when ready</li>
           </ol>
         </div>
       </div>
