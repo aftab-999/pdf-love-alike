@@ -8,7 +8,12 @@ import { toast } from '@/hooks/use-toast';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import CompressFileDisplay from '@/components/CompressPDFComponents/CompressFileDisplay';
 import CompressionSettings from '@/components/CompressPDFComponents/CompressionSettings';
-import { calculateEstimatedSize } from '@/lib/fileUtils';
+import { 
+  calculateEstimatedSize, 
+  compressPDF,
+  compressPDFToTargetSize,
+  formatFileSize
+} from '@/lib/fileUtils';
 
 const CompressPDF = () => {
   const [files, setFiles] = useState<File[]>([]);
@@ -21,11 +26,13 @@ const CompressPDF = () => {
   const [originalSize, setOriginalSize] = useState(0);
   const [targetSize, setTargetSize] = useState<number | null>(null);
   const [compressedFile, setCompressedFile] = useState<Blob | null>(null);
+  const [actualCompressedSize, setActualCompressedSize] = useState<number | null>(null);
 
   const handleFilesAdded = (newFiles: File[]) => {
     setFiles(newFiles);
     setIsComplete(false);
     setCompressedFile(null);
+    setActualCompressedSize(null);
     
     // Calculate total size of files
     const totalSize = newFiles.reduce((sum, file) => sum + file.size, 0);
@@ -39,6 +46,7 @@ const CompressPDF = () => {
       setOriginalSize(newTotalSize);
       setIsComplete(false);
       setCompressedFile(null);
+      setActualCompressedSize(null);
       return newFiles;
     });
   };
@@ -52,7 +60,7 @@ const CompressPDF = () => {
     } else {
       setEstimatedSize(null);
     }
-  }, [files, compressionPercentage, targetSize, originalSize]);
+  }, [files, compressionPercentage, originalSize]);
 
   // Update compression level based on slider percentage
   useEffect(() => {
@@ -83,35 +91,62 @@ const CompressPDF = () => {
     setProgress(0);
     setIsComplete(false);
     setCompressedFile(null);
+    setActualCompressedSize(null);
 
-    // Simulate compression process with progress updates
-    const totalSteps = 10;
-    for (let step = 1; step <= totalSteps; step++) {
-      await new Promise(resolve => setTimeout(resolve, 300));
-      setProgress(step * 10);
-    }
-
-    // Simulate compression completion
-    // In a real implementation with Supabase, this would actually process the file
-    // For now, we'll create a mock compressed file for download demonstration
-    const mockCompressedFile = new Blob([files[0]], { type: "application/pdf" });
-    setCompressedFile(mockCompressedFile);
-
-    setTimeout(() => {
-      setIsProcessing(false);
-      setIsComplete(true);
-      toast({
-        title: "PDF compressed successfully!",
-        description: "Your PDF has been compressed and is being downloaded.",
-      });
+    try {
+      // Start progress indication
+      setProgress(10);
       
-      // Automatically trigger download after compression is complete
-      handleDownload();
-    }, 300);
+      // Get the file to compress
+      const fileToCompress = files[0];
+      
+      let compressedBlob: Blob;
+      
+      // Check if we're targeting a specific size or using general compression level
+      if (targetSize !== null) {
+        // Compress to target size in KB
+        const targetKB = Math.round(targetSize / 1024);
+        setProgress(30);
+        compressedBlob = await compressPDFToTargetSize(fileToCompress, targetKB);
+      } else {
+        // Compress using the selected compression level
+        setProgress(30);
+        compressedBlob = await compressPDF(fileToCompress, compressionLevel);
+      }
+      
+      setProgress(80);
+      
+      // Set the compressed file for download
+      setCompressedFile(compressedBlob);
+      setActualCompressedSize(compressedBlob.size);
+      
+      setProgress(100);
+      setIsComplete(true);
+      
+      // Automatically download after compression
+      setTimeout(() => {
+        handleDownload();
+        
+        toast({
+          title: "PDF compressed successfully!",
+          description: `Original size: ${formatFileSize(fileToCompress.size)}. New size: ${formatFileSize(compressedBlob.size)}`,
+        });
+      }, 500);
+      
+    } catch (error) {
+      console.error("Compression error:", error);
+      toast({
+        title: "Compression failed",
+        description: "There was an error compressing your PDF. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleDownload = () => {
-    if (!compressedFile) return;
+    if (!compressedFile || files.length === 0) return;
     
     // Create a download link and trigger it
     const downloadURL = URL.createObjectURL(compressedFile);
@@ -146,7 +181,7 @@ const CompressPDF = () => {
           
           <Alert className="mt-4 bg-blue-50 border-blue-200">
             <AlertDescription className="text-xs sm:text-sm text-blue-800">
-              Your uploaded files are automatically deleted within 10 minutes from our database. 
+              Your uploaded files are automatically deleted after processing. 
               We respect your privacy and ensure no data leaks occur.
             </AlertDescription>
           </Alert>
@@ -184,13 +219,28 @@ const CompressPDF = () => {
                 </Button>
                 
                 {isComplete && compressedFile && (
-                  <Button 
-                    onClick={handleDownload} 
-                    variant="outline" 
-                    className="border-purple-500 text-purple-500 hover:bg-purple-50"
-                  >
-                    Download Compressed PDF
-                  </Button>
+                  <div className="space-y-4">
+                    <Button 
+                      onClick={handleDownload} 
+                      variant="outline" 
+                      className="w-full border-purple-500 text-purple-500 hover:bg-purple-50"
+                    >
+                      Download Compressed PDF ({formatFileSize(actualCompressedSize || 0)})
+                    </Button>
+                    
+                    {actualCompressedSize && (
+                      <div className="p-3 bg-green-50 border border-green-100 rounded-md">
+                        <p className="text-sm flex items-center justify-between">
+                          <span className="font-medium">Original size:</span>
+                          <span>{formatFileSize(originalSize)}</span>
+                        </p>
+                        <p className="text-sm flex items-center justify-between mt-1">
+                          <span className="font-medium">Compressed size:</span>
+                          <span className="text-green-700">{formatFileSize(actualCompressedSize)}</span>
+                        </p>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )}

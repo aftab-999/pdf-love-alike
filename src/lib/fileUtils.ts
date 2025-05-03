@@ -1,4 +1,6 @@
 
+import { PDFDocument } from 'pdf-lib';
+
 export const formatFileSize = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} bytes`;
   else if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(2)} KB`;
@@ -100,4 +102,55 @@ export const getCompressionForExactTargetSize = (
   }
   
   return Math.min(98, Math.max(10, Math.round(basePercentage)));
+};
+
+// Actual PDF compression function
+export const compressPDF = async (file: File, compressionLevel: string): Promise<Blob> => {
+  try {
+    // Read the PDF file
+    const fileArrayBuffer = await file.arrayBuffer();
+    const pdfDoc = await PDFDocument.load(fileArrayBuffer);
+    
+    // Apply compression based on the level
+    const compressionOptions: { [key: string]: any } = {
+      low: { quality: 0.9, useObjectStreams: true },
+      medium: { quality: 0.75, useObjectStreams: true },
+      high: { quality: 0.5, useObjectStreams: true },
+      extreme: { quality: 0.3, useObjectStreams: true },
+      maximum: { quality: 0.1, useObjectStreams: true }
+    };
+    
+    // Get the appropriate options
+    const options = compressionOptions[compressionLevel] || compressionOptions.medium;
+    
+    // Compress and save the PDF
+    const compressedPdfBytes = await pdfDoc.save({
+      ...options,
+      addDefaultPage: false,
+      useObjectStreams: true
+    });
+    
+    // Create a new Blob from the compressed bytes
+    return new Blob([compressedPdfBytes], { type: 'application/pdf' });
+  } catch (error) {
+    console.error('Error compressing PDF:', error);
+    throw new Error('PDF compression failed');
+  }
+};
+
+// Compress to exact target size
+export const compressPDFToTargetSize = async (file: File, targetSizeKB: number): Promise<Blob> => {
+  // Calculate the compression percentage needed
+  const compressionPercentage = getCompressionForExactTargetSize(file.size, targetSizeKB);
+  
+  // Determine compression level based on percentage
+  let compressionLevel = "medium";
+  if (compressionPercentage > 90) compressionLevel = "maximum";
+  else if (compressionPercentage > 80) compressionLevel = "extreme";
+  else if (compressionPercentage > 60) compressionLevel = "high";
+  else if (compressionPercentage > 30) compressionLevel = "medium";
+  else compressionLevel = "low";
+  
+  // Compress the PDF
+  return compressPDF(file, compressionLevel);
 };
