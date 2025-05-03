@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { FileDown } from 'lucide-react';
 import DropArea from '@/components/DropArea';
@@ -103,9 +102,6 @@ const CompressPDF = () => {
     setCompressionSuccessful(false);
 
     try {
-      // Start progress indication
-      setProgress(10);
-      
       // Get the file to compress
       const fileToCompress = files[0];
       console.log(`Starting compression: Original size: ${formatFileSize(fileToCompress.size)}`);
@@ -113,21 +109,22 @@ const CompressPDF = () => {
       
       let compressedBlob: Blob;
       
+      // Update progress function to keep UI in sync
+      const updateProgress = (value: number) => {
+        setProgress(value);
+      };
+      
       // Check if we're targeting a specific size or using general compression level
       if (targetSize !== null) {
         // Compress to target size in KB
         const targetKB = Math.round(targetSize / 1024);
-        setProgress(30);
         console.log(`Compressing to target size: ${targetKB}KB`);
-        compressedBlob = await compressPDFToTargetSize(fileToCompress, targetKB);
+        compressedBlob = await compressPDFToTargetSize(fileToCompress, targetKB, updateProgress);
       } else {
         // Compress using the selected compression level
-        setProgress(30);
         console.log(`Compressing with level: ${compressionLevel}`);
-        compressedBlob = await compressPDF(fileToCompress, compressionLevel);
+        compressedBlob = await compressPDF(fileToCompress, compressionLevel, updateProgress);
       }
-      
-      setProgress(80);
       
       // Set the compressed file for download
       setCompressedFile(compressedBlob);

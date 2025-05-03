@@ -1,4 +1,5 @@
-import { PDFDocument, PDFPage } from 'pdf-lib';
+import { PDFDocument } from 'pdf-lib';
+import { compressPdfWithApi } from '@/services/pdfCompressService';
 
 export const formatFileSize = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} bytes`;
@@ -128,97 +129,22 @@ const getTargetBytesForLevel = (originalSize: number, level: string): number => 
   return Math.round(originalSize * (reductionFactors[level] || 0.7));
 };
 
-// Enhanced PDF compression function that actually reduces file size
-export const compressPDF = async (file: File, compressionLevel: string): Promise<Blob> => {
+// Enhanced PDF compression function that uses the PDF.co API
+export const compressPDF = async (file: File, compressionLevel: string, onProgress?: (progress: number) => void): Promise<Blob> => {
   try {
-    // Target size calculation
-    const targetBytes = getTargetBytesForLevel(file.size, compressionLevel);
-    
-    // Read the PDF file
-    const fileArrayBuffer = await file.arrayBuffer();
-    const pdfDoc = await PDFDocument.load(fileArrayBuffer, { 
-      ignoreEncryption: true,
-      updateMetadata: false
-    });
-    
-    // Apply metadata cleanup
-    pdfDoc.setTitle('');
-    pdfDoc.setSubject('');
-    pdfDoc.setKeywords([]);
-    pdfDoc.setAuthor('');
-    pdfDoc.setCreator('');
-    pdfDoc.setProducer('');
-    
-    const pages = pdfDoc.getPages();
-    const imageQuality = getImageQualityForLevel(compressionLevel);
-    
-    // Copy original pages to new document with optimization
-    const optimizedDoc = await PDFDocument.create();
-    
-    // Aggressive optimization based on compression level
-    for (let i = 0; i < pages.length; i++) {
-      const page = pages[i];
-      const { width, height } = page.getSize();
-      
-      // Copy page to new document - this helps remove unnecessary data
-      const [copiedPage] = await optimizedDoc.copyPages(pdfDoc, [i]);
-      optimizedDoc.addPage(copiedPage);
-      
-      // For higher compression levels, apply more aggressive strategies
-      if (compressionLevel === 'high' || compressionLevel === 'extreme' || compressionLevel === 'maximum') {
-        // The higher the compression level, the more we reduce image quality
-        // This is simulated as pdf-lib doesn't directly support recompressing embedded images
-        
-        // We can simulate some optimization by manipulating the page data
-        if (compressionLevel === 'maximum') {
-          // Most aggressive compression - this is a placeholder for actual image recompression
-          // In a real implementation, we would extract and recompress all images at low quality
-          console.log("Applying maximum compression optimization");
-        }
-      }
+    // Convert compression level to percentage
+    let compressionPercentage: number;
+    switch(compressionLevel) {
+      case 'low': compressionPercentage = 30; break;
+      case 'medium': compressionPercentage = 60; break;
+      case 'high': compressionPercentage = 75; break;
+      case 'extreme': compressionPercentage = 85; break;
+      case 'maximum': compressionPercentage = 95; break;
+      default: compressionPercentage = 60; // medium is default
     }
     
-    // Apply compression and save the PDF with appropriate options
-    const compressionOptions: Record<string, any> = {
-      useObjectStreams: true,
-      addDefaultPage: false,
-      objectsPerTick: compressionLevel === 'maximum' ? 10 : 50,
-      updateFieldAppearances: false,
-      compress: true
-    };
-    
-    let compressedPdfBytes = await optimizedDoc.save(compressionOptions);
-    
-    // Apply additional deflate compression to the bytes for more size reduction
-    const compressedBlob = new Blob([compressedPdfBytes], { type: 'application/pdf' });
-    
-    // If we're still not close to the target size, apply more aggressive compression
-    if (compressedBlob.size > targetBytes * 1.5 && (compressionLevel === 'extreme' || compressionLevel === 'maximum')) {
-      // Force more compression through a multi-pass approach
-      console.log("First pass compression not sufficient, applying additional optimization");
-      
-      // Get a reduced document with fewer features
-      const strippedDoc = await PDFDocument.create();
-      
-      // Copy only essential content from the original
-      for (let i = 0; i < pages.length; i++) {
-        const [copiedPage] = await strippedDoc.copyPages(pdfDoc, [i]);
-        strippedDoc.addPage(copiedPage);
-      }
-      
-      // Force maximum compression
-      const aggressiveOptions = {
-        useObjectStreams: true,
-        addDefaultPage: false,
-        objectsPerTick: 5,
-        compress: true
-      };
-      
-      const finalPdfBytes = await strippedDoc.save(aggressiveOptions);
-      return new Blob([finalPdfBytes], { type: 'application/pdf' });
-    }
-    
-    return compressedBlob;
+    // Use the API service to compress the PDF
+    return await compressPdfWithApi(file, compressionPercentage, onProgress || (() => {}));
     
   } catch (error) {
     console.error('Error compressing PDF:', error);
@@ -227,104 +153,17 @@ export const compressPDF = async (file: File, compressionLevel: string): Promise
 };
 
 // Compress to exact target size
-export const compressPDFToTargetSize = async (file: File, targetSizeKB: number): Promise<Blob> => {
-  const targetSizeBytes = targetSizeKB * 1024;
-  
+export const compressPDFToTargetSize = async (
+  file: File, 
+  targetSizeKB: number, 
+  onProgress?: (progress: number) => void
+): Promise<Blob> => {
   try {
-    // Read the PDF file
-    const fileArrayBuffer = await file.arrayBuffer();
-    const pdfDoc = await PDFDocument.load(fileArrayBuffer, { 
-      ignoreEncryption: true,
-      updateMetadata: false
-    });
+    // Calculate needed compression percentage to reach target size
+    const compressionPercentage = getCompressionForExactTargetSize(file.size, targetSizeKB);
     
-    // Create a new optimized document
-    const optimizedDoc = await PDFDocument.create();
-    
-    // Copy all pages to new document (this removes unnecessary data)
-    const pages = pdfDoc.getPages();
-    for (let i = 0; i < pages.length; i++) {
-      const [copiedPage] = await optimizedDoc.copyPages(pdfDoc, [i]);
-      optimizedDoc.addPage(copiedPage);
-    }
-    
-    // Apply metadata cleanup
-    optimizedDoc.setTitle('');
-    optimizedDoc.setSubject('');
-    optimizedDoc.setKeywords([]);
-    optimizedDoc.setAuthor('');
-    optimizedDoc.setCreator('');
-    optimizedDoc.setProducer('');
-    
-    // Step 1: Apply initial compression
-    let compressionOptions: Record<string, any> = {
-      useObjectStreams: true,
-      addDefaultPage: false,
-      updateFieldAppearances: false,
-      compress: true
-    };
-    
-    let compressedPdfBytes = await optimizedDoc.save(compressionOptions);
-    let currentSize = compressedPdfBytes.length;
-    
-    // Step 2: If we're still too large, try progressive compression
-    let iterations = 0;
-    const maxIterations = 5;
-    
-    while (currentSize > targetSizeBytes && iterations < maxIterations) {
-      iterations++;
-      console.log(`Target size iteration ${iterations}: Current ${currentSize} bytes, target: ${targetSizeBytes} bytes`);
-      
-      // Create a new document from the compressed bytes
-      const recompressDoc = await PDFDocument.load(compressedPdfBytes, {
-        ignoreEncryption: true,
-        updateMetadata: false
-      });
-      
-      // More aggressive options based on iteration
-      const aggressiveOptions = {
-        useObjectStreams: true,
-        addDefaultPage: false,
-        objectsPerTick: Math.max(5, 10 - iterations),
-        compress: true
-      };
-      
-      // Try to compress more aggressively
-      compressedPdfBytes = await recompressDoc.save(aggressiveOptions);
-      currentSize = compressedPdfBytes.length;
-      
-      // If we've made minimal progress, break to avoid wasting resources
-      if (iterations > 2 && currentSize > targetSizeBytes * 1.2) {
-        console.log("Compression progress too slow, applying final more aggressive compression");
-        break;
-      }
-    }
-    
-    // Step 3: If we still can't hit the target size, create a simplified version
-    if (currentSize > targetSizeBytes * 1.2) {
-      console.log("Unable to reach target size through standard compression, creating simplified document");
-      
-      // Create a very stripped down version of the document
-      const finalDoc = await PDFDocument.create();
-      
-      // Copy only essential content
-      for (let i = 0; i < pdfDoc.getPageCount(); i++) {
-        const [copiedPage] = await finalDoc.copyPages(pdfDoc, [i]);
-        finalDoc.addPage(copiedPage);
-      }
-      
-      // Apply maximum compression
-      const finalOptions = {
-        useObjectStreams: true,
-        addDefaultPage: false,
-        objectsPerTick: 5,
-        compress: true
-      };
-      
-      compressedPdfBytes = await finalDoc.save(finalOptions);
-    }
-    
-    return new Blob([compressedPdfBytes], { type: 'application/pdf' });
+    // Use the API service to compress the PDF
+    return await compressPdfWithApi(file, compressionPercentage, onProgress || (() => {}));
     
   } catch (error) {
     console.error('Error compressing PDF to target size:', error);
