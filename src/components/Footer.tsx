@@ -18,9 +18,10 @@ const Footer = () => {
           <div>
             <h3 className="font-semibold mb-4">Convert</h3>
             <ul className="space-y-2 text-gray-600 text-sm">
-              <li><Link to="/pdf-to-word" className="hover:text-pdf-red">PDF to Word</Link></li>
+              {/* Only include links to pages that actually exist */}
               <li><Link to="/pdf-to-image" className="hover:text-pdf-red">PDF to Image</Link></li>
-              <li><Link to="/image-to-pdf" className="hover:text-pdf-red">Image to PDF</Link></li>
+              <li><span className="cursor-not-allowed opacity-60">Image to PDF</span></li>
+              <li><span className="cursor-not-allowed opacity-60">PDF to Word</span></li>
             </ul>
           </div>
           
@@ -36,9 +37,10 @@ const Footer = () => {
           <div>
             <h3 className="font-semibold mb-4">Company</h3>
             <ul className="space-y-2 text-gray-600 text-sm">
-              <li><Link to="/about" className="hover:text-pdf-red">About Us</Link></li>
-              <li><Link to="/privacy" className="hover:text-pdf-red">Privacy Policy</Link></li>
-              <li><Link to="/terms" className="hover:text-pdf-red">Terms of Service</Link></li>
+              {/* Replace non-existent routes with disabled spans */}
+              <li><span className="cursor-not-allowed opacity-60">About Us</span></li>
+              <li><span className="cursor-not-allowed opacity-60">Privacy Policy</span></li>
+              <li><span className="cursor-not-allowed opacity-60">Terms of Service</span></li>
             </ul>
           </div>
         </div>
