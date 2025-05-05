@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { FileDown } from 'lucide-react';
 import DropArea from '@/components/DropArea';
@@ -12,7 +13,8 @@ import {
   compressPDF,
   compressPDFToTargetSize,
   formatFileSize,
-  calculateCompressionPercentage
+  calculateCompressionPercentage,
+  downloadPDF
 } from '@/lib/fileUtils';
 
 const CompressPDF = () => {
@@ -20,7 +22,7 @@ const CompressPDF = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState(0);
   const [compressionLevel, setCompressionLevel] = useState("medium");
-  const [compressionPercentage, setCompressionPercentage] = useState(50);
+  const [compressionPercentage, setCompressionPercentage] = useState(60);
   const [estimatedSize, setEstimatedSize] = useState<number | null>(null);
   const [isComplete, setIsComplete] = useState(false);
   const [originalSize, setOriginalSize] = useState(0);
@@ -28,6 +30,7 @@ const CompressPDF = () => {
   const [compressedFile, setCompressedFile] = useState<Blob | null>(null);
   const [actualCompressedSize, setActualCompressedSize] = useState<number | null>(null);
   const [compressionSuccessful, setCompressionSuccessful] = useState(false);
+  const [fileName, setFileName] = useState<string>('compressed.pdf');
 
   const handleFilesAdded = (newFiles: File[]) => {
     setFiles(newFiles);
@@ -36,9 +39,16 @@ const CompressPDF = () => {
     setActualCompressedSize(null);
     setCompressionSuccessful(false);
     
+    if (newFiles.length > 0) {
+      const firstFileName = newFiles[0].name;
+      setFileName(firstFileName.replace(/\.pdf$/i, '') + '-compressed.pdf');
+    }
+    
     // Calculate total size of files
     const totalSize = newFiles.reduce((sum, file) => sum + file.size, 0);
     setOriginalSize(totalSize);
+    
+    console.log(`File added: ${newFiles[0]?.name}, size: ${formatFileSize(totalSize)}`);
   };
 
   const handleRemoveFile = (index: number) => {
@@ -112,6 +122,7 @@ const CompressPDF = () => {
       // Update progress function to keep UI in sync
       const updateProgress = (value: number) => {
         setProgress(value);
+        console.log(`Compression progress: ${value}%`);
       };
       
       // Check if we're targeting a specific size or using general compression level
@@ -175,22 +186,24 @@ const CompressPDF = () => {
   const handleDownload = () => {
     if (!compressedFile || files.length === 0) return;
     
-    // Create a download link and trigger it
-    const downloadURL = URL.createObjectURL(compressedFile);
-    const downloadLink = document.createElement('a');
-    downloadLink.href = downloadURL;
-    downloadLink.download = files[0].name.replace('.pdf', '') + '-compressed.pdf';
-    document.body.appendChild(downloadLink);
-    downloadLink.click();
-    document.body.removeChild(downloadLink);
-    
-    // Clean up the URL
-    URL.revokeObjectURL(downloadURL);
-    
-    toast({
-      title: "Download started",
-      description: "Your compressed PDF is being downloaded.",
-    });
+    try {
+      // Use the downloadPDF utility function
+      downloadPDF(compressedFile, fileName);
+      
+      toast({
+        title: "Download started",
+        description: "Your compressed PDF is being downloaded.",
+      });
+      
+      console.log(`Downloaded compressed PDF: ${fileName}`);
+    } catch (error) {
+      console.error("Download error:", error);
+      toast({
+        title: "Download failed",
+        description: "There was an error downloading your PDF. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -299,6 +312,14 @@ const CompressPDF = () => {
             <li className="pl-1 sm:pl-2">Click "Compress PDF" and wait for the process to complete</li>
             <li className="pl-1 sm:pl-2">Your compressed file will be available for download when ready</li>
           </ol>
+          
+          <div className="mt-4 p-3 bg-white rounded-md border border-purple-100">
+            <h4 className="font-semibold text-purple-700 mb-1">Important Note:</h4>
+            <p className="text-sm text-gray-700">
+              You must replace "YOUR_PDF_CO_API_KEY" in the code with your actual PDF.co API key to make the compression work.
+              Get your API key from <a href="https://pdf.co" className="text-purple-600 underline" target="_blank" rel="noopener noreferrer">PDF.co</a>
+            </p>
+          </div>
         </div>
       </div>
     </div>

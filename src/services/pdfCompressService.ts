@@ -48,6 +48,14 @@ export const submitPdfCompressionJob = async (
         profiles: {
           compression: apiCompressionLevel,
           imageQuality: Math.max(10, 100 - apiCompressionLevel),
+          imageScale: compressionLevel > 80 ? 0.8 : 1.0, // Scale down images for extreme compression
+          removeAnnotations: compressionLevel > 90, // Remove annotations for maximum compression
+          removeBookmarks: compressionLevel > 90, // Remove bookmarks for maximum compression
+          removeEmbeddedFiles: compressionLevel > 70, // Remove embedded files for high compression
+          removeFormFields: compressionLevel > 90, // Remove form fields for maximum compression
+          removeJavaScripts: compressionLevel > 70, // Remove JavaScripts for high compression
+          removeMetadata: compressionLevel > 50, // Remove metadata for medium and higher compression
+          compressImages: true // Always compress images
         }
       }),
     });
@@ -122,18 +130,38 @@ export const downloadCompressedPdf = async (url: string): Promise<Blob> => {
 };
 
 /**
- * Helper to create a temporary URL for a file
- * @param file File object to create URL for
- * @returns Promise with temporary URL string
+ * Helper to upload a file to a temporary storage and get URL
+ * @param file File object to upload
+ * @returns Promise with the URL where the file is hosted
  */
 export const createTemporaryFileUrl = async (file: File): Promise<string> => {
-  // In a real implementation, this would upload to a temporary storage
-  // For now, we'll create a data URL as a simplified approach
-  return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.readAsDataURL(file);
-  });
+  // In a production environment, you would upload to a server to get a URL
+  // For this demo, we'll use PDF.co direct upload which returns a URL
+  try {
+    // Create FormData with the file
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    // Upload to PDF.co
+    const response = await fetch("https://api.pdf.co/v1/file/upload", {
+      method: "POST",
+      headers: {
+        "x-api-key": API_KEY,
+      },
+      body: formData,
+    });
+    
+    const data = await response.json();
+    
+    if (data.error) {
+      throw new Error(data.error);
+    }
+    
+    return data.url;
+  } catch (error) {
+    console.error("Error uploading file:", error);
+    throw new Error(`File upload failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
 };
 
 /**
@@ -148,37 +176,48 @@ export const compressPdfWithApi = async (
   onProgress: (progress: number) => void
 ): Promise<Blob> => {
   try {
-    // Step 1: Create temporary URL for the file (in real app, upload to server)
+    // Step 1: Upload file to get a URL
     onProgress(10);
+    console.log("Uploading file to get URL...");
     const fileUrl = await createTemporaryFileUrl(file);
+    console.log("File uploaded, URL obtained:", fileUrl);
     
     // Step 2: Submit compression job to API
     onProgress(25);
+    console.log(`Submitting compression job with ${compressionPercentage}% compression...`);
     const jobDetails = await submitPdfCompressionJob(fileUrl, compressionPercentage);
+    console.log("Compression job submitted:", jobDetails);
     
     // Step 3: Poll for job completion
     onProgress(40);
     let status = "pending";
     let resultUrl = "";
+    let pollCount = 0;
     
     while (status === "pending" || status === "working") {
-      // Wait a bit before checking again
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Wait a bit before checking again (increase wait time after each poll)
+      const waitTime = Math.min(5000, 2000 + pollCount * 500);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
       
       // Check current job status
       const jobStatus = await checkPdfCompressionJob(jobDetails.jobId);
       status = jobStatus.status;
+      pollCount++;
       
       if (status === "success") {
         resultUrl = jobStatus.url;
         onProgress(75);
+        console.log("Compression job completed successfully!");
         break;
       } else if (status === "error" || status === "failed") {
+        console.error("Compression job failed:", jobStatus);
         throw new Error("PDF compression job failed");
       }
       
       // Update progress (gradually move from 40 to 70%)
-      onProgress(Math.min(70, 40 + Math.random() * 5));
+      const progressIncrement = Math.min(70, 40 + (pollCount * 3));
+      onProgress(progressIncrement);
+      console.log(`Checking job status: ${status}, Progress: ${progressIncrement}%`);
     }
     
     // Step 4: Download the compressed file
@@ -186,6 +225,7 @@ export const compressPdfWithApi = async (
       throw new Error("No result URL provided");
     }
     
+    console.log("Downloading compressed file from:", resultUrl);
     const compressedFile = await downloadCompressedPdf(resultUrl);
     onProgress(100);
     

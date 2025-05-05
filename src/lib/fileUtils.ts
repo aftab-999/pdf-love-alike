@@ -1,3 +1,4 @@
+
 import { PDFDocument } from 'pdf-lib';
 import { compressPdfWithApi } from '@/services/pdfCompressService';
 
@@ -52,20 +53,19 @@ export const calculateEstimatedSize = (
   
   let compressionEfficiency;
   if (compressionPercentage < 30) {
-    compressionEfficiency = 0.6; // Low compression, slightly more efficient
+    compressionEfficiency = 0.85; // Low compression, more realistic
   } else if (compressionPercentage < 60) {
-    compressionEfficiency = 0.75; // Medium compression, improved
+    compressionEfficiency = 0.9; // Medium compression, improved
   } else if (compressionPercentage < 80) {
-    compressionEfficiency = 0.9; // High compression, improved
+    compressionEfficiency = 0.95; // High compression, improved
   } else if (compressionPercentage < 90) {
-    compressionEfficiency = 0.95; // Extreme compression, very efficient
+    compressionEfficiency = 0.98; // Extreme compression, very efficient
   } else {
-    compressionEfficiency = 0.98; // Maximum compression, extremely efficient
+    compressionEfficiency = 0.99; // Maximum compression, extremely efficient
   }
   
   // Apply the compression calculation
-  // Ensure we can achieve very small sizes like 100KB when needed
-  const minimumSize = 50 * 1024; // Allow down to 50KB minimum
+  const minimumSize = 20 * 1024; // Allow down to 20KB minimum
   const estimatedSize = Math.max(originalSize * (1 - reductionFactor * compressionEfficiency), minimumSize);
   return Math.round(estimatedSize);
 };
@@ -88,14 +88,14 @@ export const getCompressionForExactTargetSize = (
   
   // Apply correction factors based on compression range
   if (basePercentage > 90) {
-    // For maximum compression, we need to be most aggressive
-    basePercentage = Math.min(98, basePercentage * 1.07);
+    // For maximum compression, be most aggressive
+    basePercentage = Math.min(98, basePercentage * 1.05);
   } else if (basePercentage > 80) {
-    // For extreme compression, we need to be very aggressive
-    basePercentage = Math.min(95, basePercentage * 1.05);
+    // For extreme compression
+    basePercentage = Math.min(95, basePercentage * 1.03);
   } else if (basePercentage > 60) {
     // For high compression
-    basePercentage = basePercentage * 1.03;
+    basePercentage = basePercentage * 1.02;
   } else if (basePercentage > 30) {
     // For medium compression
     basePercentage = basePercentage * 1.01;
@@ -119,14 +119,14 @@ const getImageQualityForLevel = (level: string): number => {
 // Gets target bytes for a compression level
 const getTargetBytesForLevel = (originalSize: number, level: string): number => {
   const reductionFactors: Record<string, number> = {
-    'low': 0.9,
-    'medium': 0.7,
-    'high': 0.5,
-    'extreme': 0.3,
-    'maximum': 0.15,
+    'low': 0.8,
+    'medium': 0.6,
+    'high': 0.4,
+    'extreme': 0.2,
+    'maximum': 0.1,
   };
   
-  return Math.round(originalSize * (reductionFactors[level] || 0.7));
+  return Math.round(originalSize * (reductionFactors[level] || 0.6));
 };
 
 // Enhanced PDF compression function that uses the PDF.co API
@@ -137,11 +137,13 @@ export const compressPDF = async (file: File, compressionLevel: string, onProgre
     switch(compressionLevel) {
       case 'low': compressionPercentage = 30; break;
       case 'medium': compressionPercentage = 60; break;
-      case 'high': compressionPercentage = 75; break;
-      case 'extreme': compressionPercentage = 85; break;
+      case 'high': compressionPercentage = 80; break;
+      case 'extreme': compressionPercentage = 90; break;
       case 'maximum': compressionPercentage = 95; break;
       default: compressionPercentage = 60; // medium is default
     }
+    
+    console.log(`Compressing with ${compressionLevel} level (${compressionPercentage}%)`);
     
     // Use the API service to compress the PDF
     return await compressPdfWithApi(file, compressionPercentage, onProgress || (() => {}));
@@ -162,6 +164,8 @@ export const compressPDFToTargetSize = async (
     // Calculate needed compression percentage to reach target size
     const compressionPercentage = getCompressionForExactTargetSize(file.size, targetSizeKB);
     
+    console.log(`Compressing to target size: ${targetSizeKB}KB using ${compressionPercentage}% compression`);
+    
     // Use the API service to compress the PDF
     return await compressPdfWithApi(file, compressionPercentage, onProgress || (() => {}));
     
@@ -169,4 +173,21 @@ export const compressPDFToTargetSize = async (
     console.error('Error compressing PDF to target size:', error);
     throw new Error('PDF compression to target size failed: ' + (error instanceof Error ? error.message : String(error)));
   }
+};
+
+// Create a download for the compressed PDF file
+export const downloadPDF = (blob: Blob, filename: string): void => {
+  // Create a URL for the blob
+  const url = URL.createObjectURL(blob);
+  
+  // Create a download link and trigger it
+  const downloadLink = document.createElement('a');
+  downloadLink.href = url;
+  downloadLink.download = filename;
+  document.body.appendChild(downloadLink);
+  downloadLink.click();
+  
+  // Clean up
+  document.body.removeChild(downloadLink);
+  setTimeout(() => URL.revokeObjectURL(url), 100);
 };
