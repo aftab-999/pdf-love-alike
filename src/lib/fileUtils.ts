@@ -152,23 +152,24 @@ export const compressPDF = async (
     }
     
     // Apply compression settings based on level
-    let compressionOptions = {};
+    let compressionOptions: any = {};
     
     switch (compressionLevel) {
       case 'maximum':
-        compressionOptions = { compress: true, objectsPerTick: 50 };
+        compressionOptions = { objectsPerTick: 50 };
         break;
       case 'extreme':
-        compressionOptions = { compress: true, objectsPerTick: 100 };
+        compressionOptions = { objectsPerTick: 100 };
         break;
       case 'high':
-        compressionOptions = { compress: true, objectsPerTick: 200 };
+        compressionOptions = { objectsPerTick: 200 };
         break;
       case 'medium':
-        compressionOptions = { compress: true };
+        // Default options
         break;
       default:
-        compressionOptions = {};
+        // No specific options for low compression
+        break;
     }
     
     // Save with compression options
@@ -191,8 +192,7 @@ export const compressPDF = async (
       const finalBytes = await recompressed.save({
         useObjectStreams: true,
         addDefaultPage: false,
-        objectsPerTick: compressionLevel === 'maximum' ? 10 : 25,
-        compress: true
+        objectsPerTick: compressionLevel === 'maximum' ? 10 : 25
       });
       
       return new Blob([finalBytes], { type: 'application/pdf' });
