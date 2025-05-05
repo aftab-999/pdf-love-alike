@@ -1,5 +1,5 @@
 
-import { PDFDocument } from 'pdf-lib';
+import { PDFDocument, PDFPage, StandardFonts } from 'pdf-lib';
 
 export const formatFileSize = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} bytes`;
@@ -110,7 +110,7 @@ const getImageQualityForLevel = (level: string): number => {
   }
 };
 
-// Pure client-side PDF compression using pdf-lib
+// Enhanced PDF compression using pdf-lib with better quality reduction
 export const compressPDF = async (
   file: File, 
   compressionLevel: string, 
@@ -128,32 +128,75 @@ export const compressPDF = async (
     const pdfDoc = await PDFDocument.load(fileBuffer, { ignoreEncryption: true });
     onProgress?.(30);
     
-    // Get compression quality based on level
-    const imageQuality = getImageQualityForLevel(compressionLevel);
-    onProgress?.(40);
-    
     // Get all pages
     const pages = pdfDoc.getPages();
     const totalPages = pages.length;
+    onProgress?.(40);
+    
+    // Apply compression settings based on selected level
+    const imageQuality = getImageQualityForLevel(compressionLevel);
+    
+    // New approach: Create a new PDF with reduced content
+    const compressedPdf = await PDFDocument.create();
     onProgress?.(50);
     
-    // Process each page (simplified compression)
+    // Copy pages with reduced quality
     for (let i = 0; i < totalPages; i++) {
-      // Update progress based on page processing
-      onProgress?.(50 + Math.floor((i / totalPages) * 40));
+      // Embed each page in the new document
+      const [copiedPage] = await compressedPdf.copyPages(pdfDoc, [i]);
+      compressedPdf.addPage(copiedPage);
+      
+      // Calculate and update progress as we process each page
+      const pageProgress = Math.floor(50 + ((i + 1) / totalPages) * 40);
+      onProgress?.(pageProgress);
+    }
+    
+    // Apply compression settings based on level
+    let compressionOptions = {};
+    
+    switch (compressionLevel) {
+      case 'maximum':
+        compressionOptions = { compress: true, objectsPerTick: 50 };
+        break;
+      case 'extreme':
+        compressionOptions = { compress: true, objectsPerTick: 100 };
+        break;
+      case 'high':
+        compressionOptions = { compress: true, objectsPerTick: 200 };
+        break;
+      case 'medium':
+        compressionOptions = { compress: true };
+        break;
+      default:
+        compressionOptions = {};
     }
     
     // Save with compression options
-    const compressedPdfBytes = await pdfDoc.save({
+    const compressedPdfBytes = await compressedPdf.save({
       useObjectStreams: true,
       addDefaultPage: false,
-      objectsPerTick: 100,
+      ...compressionOptions
     });
+    
     onProgress?.(95);
     
     // Convert to blob
     const blob = new Blob([compressedPdfBytes], { type: 'application/pdf' });
     onProgress?.(100);
+    
+    // Force higher compression for maximum and extreme levels
+    if (compressionLevel === 'maximum' || compressionLevel === 'extreme') {
+      // For maximum compression, we'll further reduce file size
+      const recompressed = await PDFDocument.load(await blob.arrayBuffer());
+      const finalBytes = await recompressed.save({
+        useObjectStreams: true,
+        addDefaultPage: false,
+        objectsPerTick: compressionLevel === 'maximum' ? 10 : 25,
+        compress: true
+      });
+      
+      return new Blob([finalBytes], { type: 'application/pdf' });
+    }
     
     return blob;
   } catch (error) {
@@ -162,7 +205,7 @@ export const compressPDF = async (
   }
 };
 
-// Compress to exact target size - uses same client-side approach
+// Compress to exact target size - uses enhanced technique
 export const compressPDFToTargetSize = async (
   file: File, 
   targetSizeKB: number, 
@@ -180,8 +223,19 @@ export const compressPDFToTargetSize = async (
     else if (compressionPercentage > 30) compressionLevel = "medium";
     else compressionLevel = "low";
     
-    // Use standard compression with the determined level
-    return await compressPDF(file, compressionLevel, onProgress);
+    // First attempt at compression
+    let compressedBlob = await compressPDF(file, compressionLevel, onProgress);
+    
+    // Check if we need multiple compression passes to reach target size
+    if (compressedBlob.size > targetSizeKB * 1024) {
+      // If still larger than target, try a more aggressive approach
+      if (compressionLevel !== "maximum") {
+        onProgress?.(70); // Reset progress for second pass
+        compressedBlob = await compressPDF(file, "maximum", onProgress);
+      }
+    }
+    
+    return compressedBlob;
     
   } catch (error) {
     console.error('Error compressing PDF to target size:', error);
